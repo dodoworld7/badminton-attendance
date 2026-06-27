@@ -262,12 +262,15 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
             <div className="no-attendees">아직 신청자가 없습니다. 제일 먼저 신청해 보세요! 🏸</div>
           )}
 
-          {/* 조작 설명 문구 */}
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-            💡 <strong>오늘 또는 미래 날짜</strong>의 달력 칸을 클릭하면 출석 참여/취소를 간편하게 토글할 수 있습니다.
-            <br />
-            (과거 날짜는 출석 조작이 비활성화됩니다.)
-          </p>
+          {/* 조작 설명 문구 (가독성 배너화) */}
+          <div className="day-detail-guide">
+            <span>
+              💡 <strong>오늘 또는 미래 날짜</strong>의 달력 칸을 클릭하면 출석 참여/취소를 간편하게 토글할 수 있습니다.
+            </span>
+            <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
+              (과거 날짜는 출석 조작이 비활성화됩니다.)
+            </span>
+          </div>
         </div>
       )}
     </div>

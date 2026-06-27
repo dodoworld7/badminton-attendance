@@ -550,6 +550,101 @@ body {
   position: relative;
 }
 
+/* Day Detail Panel Layout (Beautified & Highly Readable) */
+.day-detail-panel {
+  margin-top: 20px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.day-detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+}
+
+@media (min-width: 480px) {
+  .day-detail-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.day-detail-date {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.day-attendees-title {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 750;
+  margin-bottom: 4px;
+}
+
+.day-attendees-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attendee-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4; /* 상큼한 에메랄드 백그라운드 */
+  color: var(--accent-neon);
+  border: 1px solid rgba(5, 150, 105, 0.15);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.01);
+}
+
+.attendee-dot-active {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-neon);
+  border-radius: 50%;
+}
+
+.no-attendees {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  background: #f9fafb;
+  border: 1px dashed var(--glass-border);
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.day-detail-guide {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  background: rgba(37, 99, 235, 0.04); /* 연한 블루 백그라운드 */
+  border: 1px solid rgba(37, 99, 235, 0.08);
+  padding: 12px 14px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 /* Status Banner */
 .db-status-banner {
   flex-direction: column;
