@@ -10,6 +10,7 @@ import {
   getFirestore, 
   collection, 
   doc, 
+  getDoc,
   setDoc, 
   deleteDoc, 
   getDocs, 
@@ -53,6 +54,7 @@ const CURRENT_USER_KEY = 'badminton_current_user';
 const seedMockData = () => {
   if (!localStorage.getItem(MOCK_USERS_KEY)) {
     const mockUsers = [
+      { id: 'user-admin', email: 'admin@admin.com', name: '최고 관리자', password: '2026', isAdmin: true },
       { id: 'user-dohyun', email: 'dohyun@badminton.com', name: '미스터 도현', password: 'password123' },
       { id: 'user-minsu', email: 'minsu@badminton.com', name: '김민수', password: 'password123' },
       { id: 'user-suji', email: 'suji@badminton.com', name: '이수지', password: 'password123' },
@@ -112,6 +114,19 @@ export const dbService = {
       // Firebase Auth 유저 프로필 이름 정보 업데이트
       await updateProfile(userCredential.user, { displayName: name });
       
+      // Firestore에 사용자 정보 기록
+      try {
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        await setDoc(userDocRef, {
+          id: userCredential.user.uid,
+          email: userCredential.user.email,
+          name: name,
+          created_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error('Firestore users 테이블 저장 실패:', err);
+      }
+      
       return { 
         id: userCredential.user.uid, 
         email: userCredential.user.email, 
@@ -133,14 +148,30 @@ export const dbService = {
   },
 
   async signIn(email, password) {
+    // 최고 관리자 계정 백도어/우회 인증 처리 (Firebase 설정 여부 무관)
+    if (email === 'admin@admin.com' && password === '2026') {
+      const adminUser = {
+        id: 'user-admin',
+        email: 'admin@admin.com',
+        name: '최고 관리자',
+        isAdmin: true
+      };
+      this.saveLocalSession(adminUser);
+      return adminUser;
+    }
+
     if (isFirebaseConfigured) {
       // Firebase 로그인
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      return {
+      const user = {
         id: userCredential.user.uid,
         email: userCredential.user.email,
         name: userCredential.user.displayName || '사용자',
       };
+      if (user.email === 'admin@admin.com') {
+        user.isAdmin = true;
+      }
+      return user;
     } else {
       // LocalStorage 로그인
       const users = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
@@ -162,25 +193,36 @@ export const dbService = {
   },
 
   async getCurrentUser() {
+    const localUserStr = localStorage.getItem(CURRENT_USER_KEY);
+    if (localUserStr) {
+      const localUser = JSON.parse(localUserStr);
+      if (localUser.email === 'admin@admin.com') {
+        return localUser;
+      }
+    }
+
     if (isFirebaseConfigured) {
       // Firebase Auth의 현재 로그인 관찰
       return new Promise((resolve) => {
         const unsubscribe = auth.onAuthStateChanged((user) => {
           unsubscribe();
           if (user) {
-            resolve({
+            const userData = {
               id: user.uid,
               email: user.email,
               name: user.displayName || '사용자'
-            });
+            };
+            if (user.email === 'admin@admin.com') {
+              userData.isAdmin = true;
+            }
+            resolve(userData);
           } else {
-            resolve(null);
+            resolve(localUserStr ? JSON.parse(localUserStr) : null);
           }
         });
       });
     } else {
-      const userStr = localStorage.getItem(CURRENT_USER_KEY);
-      return userStr ? JSON.parse(userStr) : null;
+      return localUserStr ? JSON.parse(localUserStr) : null;
     }
   },
 
@@ -188,7 +230,8 @@ export const dbService = {
     localStorage.setItem(CURRENT_USER_KEY, JSON.stringify({
       id: user.id,
       email: user.email,
-      name: user.name
+      name: user.name,
+      isAdmin: user.isAdmin || false
     }));
   },
 
@@ -336,6 +379,80 @@ export const dbService = {
       } else {
         throw new Error('삭제 권한이 없거나 메시지가 존재하지 않습니다.');
       }
+    }
+  },
+
+  async getAllUsers() {
+    if (isFirebaseConfigured) {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        const users = [];
+        querySnapshot.forEach((doc) => {
+          users.push(doc.data());
+        });
+        
+        // 만약 users가 비어있을 경우 (기존 가입한 유저들이 users에 기록이 안 되었을 시)
+        // 출석부 목록에서 고유 사용자를 추출하여 폴백 데이터로 활용
+        if (users.length === 0) {
+          const attendanceRef = collection(db, 'attendance');
+          const attSnapshot = await getDocs(attendanceRef);
+          const userMap = {};
+          attSnapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.user_id && data.user_name) {
+              userMap[data.user_id] = { id: data.user_id, name: data.user_name };
+            }
+          });
+          return Object.values(userMap);
+        }
+        return users;
+      } catch (err) {
+        console.error('회원 목록 조회 실패:', err);
+        return [];
+      }
+    } else {
+      const mockUsers = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
+      return mockUsers.map(({ id, email, name, isAdmin }) => ({ id, email, name, isAdmin }));
+    }
+  },
+
+  async changeAttendanceDate(attendanceId, newDateString) {
+    if (isFirebaseConfigured) {
+      const docRef = doc(db, 'attendance', attendanceId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        throw new Error('해당 출석 데이터가 존재하지 않습니다.');
+      }
+      const data = docSnap.data();
+      
+      // 새 문서 ID 포맷: '유저UID_날짜'
+      const newDocId = `${data.user_id}_${newDateString}`;
+      const newDocRef = doc(db, 'attendance', newDocId);
+
+      // 새 문서 생성 후 기존 문서 삭제
+      await setDoc(newDocRef, {
+        ...data,
+        attendance_date: newDateString,
+        updated_at: new Date().toISOString()
+      });
+      await deleteDoc(docRef);
+    } else {
+      const allAttendance = JSON.parse(localStorage.getItem(MOCK_ATTENDANCE_KEY) || '[]');
+      const item = allAttendance.find(a => a.id === attendanceId);
+      if (!item) {
+        throw new Error('해당 출석 데이터가 존재하지 않습니다.');
+      }
+      
+      // 혹시 해당 유저가 새 날짜에 이미 출석체크 되어 있다면 중복 방지 (기존 것 삭제하고 덮어씀)
+      const isDuplicate = allAttendance.some(a => a.user_id === item.user_id && a.attendance_date === newDateString);
+      if (isDuplicate) {
+        const index = allAttendance.findIndex(a => a.id === attendanceId);
+        allAttendance.splice(index, 1);
+      } else {
+        item.attendance_date = newDateString;
+      }
+      
+      localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify(allAttendance));
     }
   }
 };

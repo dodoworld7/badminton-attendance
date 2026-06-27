@@ -1,6 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Users, Check, AlertCircle, CalendarDays } from 'lucide-react';
-import * as HolidaysKR from '@hyunbinseo/holidays-kr';
+// 대한민국 공휴일 데이터셋 및 제헌절(7월 17일) 지정 상수
+const FIXED_HOLIDAYS = new Set([
+  '01-01', // 신정
+  '03-01', // 삼일절
+  '05-05', // 어린이날
+  '06-06', // 현충일
+  '07-17', // 제헌절
+  '08-15', // 광복절
+  '10-03', // 개천절
+  '10-09', // 한글날
+  '12-25'  // 성탄절
+]);
+
+const HOLIDAYS_SET = new Set([
+  // 2025년 대체/음력 공휴일
+  '2025-01-27', '2025-01-28', '2025-01-29', '2025-01-30',
+  '2025-03-03', '2025-05-06', '2025-06-03', '2025-10-05',
+  '2025-10-06', '2025-10-07', '2025-10-08',
+
+  // 2026년 대체/음력 공휴일
+  '2026-02-16', '2026-02-17', '2026-02-18', '2026-03-02',
+  '2026-05-24', '2026-05-25', '2026-06-03', '2026-08-17',
+  '2026-09-24', '2026-09-25', '2026-09-26', '2026-10-05',
+
+  // 2027년 대체/음력 공휴일
+  '2027-02-05', '2027-02-06', '2027-02-07', '2027-02-09',
+  '2027-05-13', '2027-05-14', '2027-08-16', '2027-09-14',
+  '2027-09-15', '2027-09-16', '2027-10-04', '2027-10-11'
+]);
+
 import { dbService } from '../services/db';
 
 
@@ -82,17 +111,15 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
     const dayNum = parseInt(parts[2], 10);
     const date = new Date(yearNum, monthNum - 1, dayNum);
     
-    if (date.getDay() === 0) return true; // 일요일
+    // 1. 일요일 체크
+    if (date.getDay() === 0) return true;
 
-    // 패키지에서 제공하는 연도별 데이터를 동기식으로 조회하여 매칭
-    const yearKey = `y${yearNum}`;
-    const yearData = HolidaysKR[yearKey];
-    if (yearData && (dateStr in yearData)) {
-      return true; // 공휴일
-    }
+    // 2. 매년 고정 법정공휴일 및 제헌절(7월 17일) 체크
+    const mmDd = `${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    if (FIXED_HOLIDAYS.has(mmDd)) return true;
 
-    // 7월 17일 제헌절 등 법정 공휴일 예외 추가 처리
-    if (monthNum === 7 && dayNum === 17) return true;
+    // 3. 연도별 대체공휴일 및 음력 변동 공휴일 체크
+    if (HOLIDAYS_SET.has(dateStr)) return true;
 
     return false;
   };
