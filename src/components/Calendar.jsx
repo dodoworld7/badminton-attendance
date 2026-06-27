@@ -214,17 +214,6 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
                   )}
                 </div>
 
-                <div className="calendar-attendance-dots">
-                  {dayAttendeesList.slice(0, 3).map((a, i) => (
-                    <span key={i} className="attendance-dot" title={a.user_name}></span>
-                  ))}
-                  {dayAttendeesList.length > 3 && (
-                    <span style={{ fontSize: '0.65rem', color: 'var(--accent-neon)', fontWeight: 'bold' }}>
-                      +{dayAttendeesList.length - 3}
-                    </span>
-                  )}
-                </div>
-
                 {dayAttendeesList.length > 0 && (
                   <span className="calendar-attendance-count">
                     {dayAttendeesList.length}명
