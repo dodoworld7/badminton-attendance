@@ -26,24 +26,36 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
   const [dayAttendees, setDayAttendees] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 하루 전 날짜로 이동
+  // 하루 전 날짜로 이동 (UTC 시간대 오차 방지 파싱)
   const handlePrevDay = () => {
     setErrorMsg('');
     if (!selectedDateStr) return;
-    const date = new Date(selectedDateStr + 'T00:00:00');
+    const parts = selectedDateStr.split('-');
+    const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     date.setDate(date.getDate() - 1);
-    const prevStr = date.toISOString().split('T')[0];
+    
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const prevStr = `${yyyy}-${mm}-${dd}`;
+    
     setSelectedDateStr(prevStr);
     setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
   };
 
-  // 하루 다음 날짜로 이동
+  // 하루 다음 날짜로 이동 (UTC 시간대 오차 방지 파싱)
   const handleNextDay = () => {
     setErrorMsg('');
     if (!selectedDateStr) return;
-    const date = new Date(selectedDateStr + 'T00:00:00');
+    const parts = selectedDateStr.split('-');
+    const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     date.setDate(date.getDate() + 1);
-    const nextStr = date.toISOString().split('T')[0];
+    
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const nextStr = `${yyyy}-${mm}-${dd}`;
+    
     setSelectedDateStr(nextStr);
     setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
   };
