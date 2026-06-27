@@ -36,8 +36,8 @@ export default function IntroCard({ currentUser, onOpenLogin, onLogout }) {
             </div>
           </div>
 
-          {/* 인증 상태 및 로그인 제어 */}
-          <div style={{ marginTop: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+          {/* 인증 상태 및 로그인 제어 (반응형 래퍼 적용) */}
+          <div className="user-profile-wrapper">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {currentUser ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
