@@ -1,19 +1,29 @@
 import React from 'react';
 import { Trophy, Flame } from 'lucide-react';
 
-export default function Statistics({ currentUser, attendanceList }) {
-  // 이번 달 전체 랭킹 계산
+export default function Statistics({ currentUser, attendanceList, currentDate }) {
+  const date = currentDate || new Date();
+  const currentYear = date.getFullYear();
+  const currentMonth = date.getMonth() + 1;
+
+  // 이번 달의 출석왕 랭킹 계산
   const calculateRanking = () => {
     const userCounts = {};
     
     attendanceList.forEach((att) => {
-      if (userCounts[att.user_id]) {
-        userCounts[att.user_id].count += 1;
-      } else {
-        userCounts[att.user_id] = {
-          name: att.user_name,
-          count: 1
-        };
+      const parts = att.attendance_date.split('-');
+      const attYear = parseInt(parts[0], 10);
+      const attMonth = parseInt(parts[1], 10);
+
+      if (attYear === currentYear && attMonth === currentMonth) {
+        if (userCounts[att.user_id]) {
+          userCounts[att.user_id].count += 1;
+        } else {
+          userCounts[att.user_id] = {
+            name: att.user_name,
+            count: 1
+          };
+        }
       }
     });
 
@@ -28,9 +38,14 @@ export default function Statistics({ currentUser, attendanceList }) {
 
   const ranking = calculateRanking();
 
-  // 로그인 유저의 개인 누적 횟수
+  // 로그인 유저의 이번 달 출석 횟수
   const myCount = currentUser
-    ? attendanceList.filter((a) => a.user_id === currentUser.id).length
+    ? attendanceList.filter((a) => {
+        const parts = a.attendance_date.split('-');
+        return a.user_id === currentUser.id &&
+               parseInt(parts[0], 10) === currentYear &&
+               parseInt(parts[1], 10) === currentMonth;
+      }).length
     : 0;
 
   return (
@@ -45,7 +60,7 @@ export default function Statistics({ currentUser, attendanceList }) {
         <div className="stats-my-box">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
             <Flame size={20} style={{ color: 'var(--accent-neon)' }} />
-            <span className="stats-my-title">나의 누적 출석</span>
+            <span className="stats-my-title">나의 이번 달 출석</span>
           </div>
           <div className="stats-my-count">{myCount}</div>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
@@ -56,7 +71,7 @@ export default function Statistics({ currentUser, attendanceList }) {
         {/* 출석 왕 랭킹 (가독성 개편 리스트) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <span className="stats-my-title" style={{ display: 'block', marginBottom: '4px' }}>
-            🏆 전체 출석왕 랭킹
+            🏆 {currentMonth}월 출석왕 랭킹
           </span>
           
           <div className="stats-ranking-box">

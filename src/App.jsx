@@ -12,6 +12,7 @@ export default function App() {
   const [attendanceList, setAttendanceList] = useState([]);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [selectedDateStr, setSelectedDateStr] = useState(new Date().toISOString().split('T')[0]);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   // 페이지 로드 시 로그인 세션 확인 및 출석 정보 로드
   useEffect(() => {
@@ -77,6 +78,8 @@ export default function App() {
         attendanceList={attendanceList}
         onRefreshAttendance={refreshAttendance}
         onOpenLogin={() => setIsLoginOpen(true)}
+        currentDate={currentDate}
+        setCurrentDate={setCurrentDate}
       />
 
       {/* 오른쪽: 통계 및 담벼락 */}
@@ -84,6 +87,7 @@ export default function App() {
         <Statistics
           currentUser={currentUser}
           attendanceList={attendanceList}
+          currentDate={currentDate}
         />
         <SocialBoard
           currentUser={currentUser}

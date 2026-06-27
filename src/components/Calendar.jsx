@@ -33,8 +33,7 @@ const HOLIDAYS_SET = new Set([
 import { dbService } from '../services/db';
 
 
-export default function Calendar({ currentUser, attendanceList, onRefreshAttendance, onOpenLogin }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+export default function Calendar({ currentUser, attendanceList, onRefreshAttendance, onOpenLogin, currentDate, setCurrentDate }) {
   const [selectedDateStr, setSelectedDateStr] = useState('');
   const [dayAttendees, setDayAttendees] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
