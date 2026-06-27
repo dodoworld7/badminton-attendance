@@ -43,13 +43,34 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="modal-title">
-            {isSignUp ? '새 멤버 등록 (회원가입)' : '멤버 로그인'}
+        {/* 절대값 위치의 보더 없는 X 닫기 버튼 */}
+        <button 
+          onClick={onClose} 
+          style={{ 
+            position: 'absolute', 
+            top: '20px', 
+            right: '20px', 
+            background: 'transparent', 
+            border: 'none', 
+            cursor: 'pointer', 
+            color: 'var(--text-secondary)',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="닫기"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="modal-header" style={{ marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+          <h3 className="modal-title" style={{ fontSize: '1.25rem', fontWeight: 850 }}>
+            {isSignUp ? '멤버 회원가입 🏸' : '멤버 로그인 🏸'}
           </h3>
-          <button className="modal-close" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            {isSignUp ? '반갑습니다! 우리 클럽 멤버로 등록해 보세요. 🎉' : '환영합니다! 오늘 운동 출석을 체크해 보세요. 👋'}
+          </p>
         </div>
 
         {error && <div className="auth-error">{error}</div>}
