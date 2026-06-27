@@ -148,20 +148,8 @@ export const dbService = {
   },
 
   async signIn(email, password) {
-    // 최고 관리자 계정 백도어/우회 인증 처리 (Firebase 설정 여부 무관)
-    if (email === 'admin@admin.com' && password === '2026') {
-      const adminUser = {
-        id: 'user-admin',
-        email: 'admin@admin.com',
-        name: '최고 관리자',
-        isAdmin: true
-      };
-      this.saveLocalSession(adminUser);
-      return adminUser;
-    }
-
     if (isFirebaseConfigured) {
-      // Firebase 로그인
+      // Firebase 로그인 (정식 보안 인증)
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = {
         id: userCredential.user.uid,
@@ -171,9 +159,22 @@ export const dbService = {
       if (user.email === 'admin@admin.com') {
         user.isAdmin = true;
       }
+      this.saveLocalSession(user);
       return user;
     } else {
-      // LocalStorage 로그인
+      // LocalStorage 로그인 (로컬 데모 개발 모드 전용)
+      // 최고 관리자 계정 가상 인증 처리
+      if (email === 'admin@admin.com' && password === '2026') {
+        const adminUser = {
+          id: 'user-admin',
+          email: 'admin@admin.com',
+          name: '최고 관리자',
+          isAdmin: true
+        };
+        this.saveLocalSession(adminUser);
+        return adminUser;
+      }
+
       const users = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
       const user = users.find(u => u.email === email && u.password === password);
       if (!user) {
