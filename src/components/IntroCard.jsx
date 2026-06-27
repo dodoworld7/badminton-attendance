@@ -59,7 +59,7 @@ export default function IntroCard({ currentUser, onOpenLogin, onLogout, isFireba
               <Clock className="intro-info-icon" size={20} />
               <div className="intro-info-text">
                 <h4>시간</h4>
-                <p>아침 7시 ~ 10시</p>
+                <p>토, 일, 공휴일 7시 ~ 10시</p>
               </div>
             </div>
           </div>

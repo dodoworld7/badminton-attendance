@@ -79,8 +79,15 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1; // 1-indexed
 
-  // 오늘 날짜 문자열 YYYY-MM-DD
-  const todayStr = new Date().toISOString().split('T')[0];
+  // 오늘 날짜 문자열 YYYY-MM-DD (로컬 시간 기준)
+  const getTodayStr = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  const todayStr = getTodayStr();
 
   // 달력 연/월 이동
   const handlePrevMonth = () => {

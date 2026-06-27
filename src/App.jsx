@@ -11,7 +11,14 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [selectedDateStr, setSelectedDateStr] = useState(new Date().toISOString().split('T')[0]);
+  const getTodayStr = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+  const [selectedDateStr, setSelectedDateStr] = useState(getTodayStr());
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // 페이지 로드 시 로그인 세션 확인 및 출석 정보 로드

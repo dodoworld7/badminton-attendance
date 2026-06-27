@@ -30,8 +30,15 @@ export default function SocialBoard({ currentUser, currentDate }) {
     if (!inputText.trim() || !currentUser || loading) return;
 
     setLoading(true);
-    // 한마디를 적는 시점의 실시간 날짜(오늘) 기입
-    const todayStr = new Date().toISOString().split('T')[0];
+    // 한마디를 적는 시점의 실시간 날짜(오늘) 기입 (로컬 시간 기준)
+    const getTodayStr = () => {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const todayStr = getTodayStr();
     
     try {
       await dbService.addMessage(todayStr, inputText, currentUser);

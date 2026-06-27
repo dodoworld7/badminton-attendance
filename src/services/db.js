@@ -70,7 +70,10 @@ const seedMockData = () => {
     const formatDate = (offsetDays) => {
       const d = new Date(today);
       d.setDate(today.getDate() + offsetDays);
-      return d.toISOString().split('T')[0];
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
     };
 
     const mockAttendance = [
@@ -89,7 +92,14 @@ const seedMockData = () => {
   }
 
   if (!localStorage.getItem(MOCK_MESSAGES_KEY)) {
-    const today = new Date().toISOString().split('T')[0];
+    const getTodayStr = () => {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const today = getTodayStr();
     const mockMessages = [
       { id: 'msg-1', user_id: 'user-minsu', user_name: '김민수', message_date: today, message_text: '오늘 컨디션 최상입니다! 다들 코트에서 뵙죠 🏸', created_at: new Date().toISOString() },
       { id: 'msg-2', user_id: 'user-suji', user_name: '이수지', message_date: today, message_text: '새 라켓 들고 갑니다. 기대되네요!', created_at: new Date().toISOString() },
