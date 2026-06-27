@@ -19,6 +19,9 @@ export default function App() {
     const initializeApp = async () => {
       try {
         const user = await dbService.getCurrentUser();
+        if (user && user.email && user.email.toLowerCase() === 'admin@admin.com') {
+          user.name = '관리자';
+        }
         setCurrentUser(user);
       } catch (err) {
         console.error('세션 확인 실패:', err);
@@ -47,6 +50,9 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user) => {
+    if (user && user.email && user.email.toLowerCase() === 'admin@admin.com') {
+      user.name = '관리자';
+    }
     setCurrentUser(user);
     refreshAttendance(); // 로그인에 따른 데이터 갱신
   };

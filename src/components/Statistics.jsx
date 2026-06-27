@@ -38,6 +38,20 @@ export default function Statistics({ currentUser, attendanceList, currentDate })
 
   const ranking = calculateRanking();
 
+  // 공동 순위 계산 (동일 횟수 시 동일 순위 부여)
+  let currentRank = 0;
+  let previousCount = -1;
+  const rankingWithTies = ranking.map((rank) => {
+    if (rank.count !== previousCount) {
+      currentRank += 1;
+      previousCount = rank.count;
+    }
+    return {
+      ...rank,
+      displayRank: currentRank
+    };
+  });
+
   // 로그인 유저의 이번 달 출석 횟수
   const myCount = currentUser
     ? attendanceList.filter((a) => {
@@ -75,18 +89,18 @@ export default function Statistics({ currentUser, attendanceList, currentDate })
           </span>
           
           <div className="stats-ranking-box">
-            {ranking.length > 0 ? (
-              ranking.map((rank, index) => {
+            {rankingWithTies.length > 0 ? (
+              rankingWithTies.map((rank) => {
                 let rankClass = 'other';
-                if (index === 0) rankClass = 'first';
-                else if (index === 1) rankClass = 'second';
-                else if (index === 2) rankClass = 'third';
+                if (rank.displayRank === 1) rankClass = 'first';
+                else if (rank.displayRank === 2) rankClass = 'second';
+                else if (rank.displayRank === 3) rankClass = 'third';
 
                 return (
                   <div key={rank.userId} className="stats-rank-item">
                     <div className="stats-rank-info">
                       <span className={`stats-rank-number ${rankClass}`}>
-                        {index + 1}위
+                        {rank.displayRank}위
                       </span>
                       <span className="stats-rank-name">{rank.name}</span>
                       {rank.userId === currentUser?.id && (

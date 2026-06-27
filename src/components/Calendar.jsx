@@ -37,12 +37,10 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
   const [selectedDateStr, setSelectedDateStr] = useState('');
   const [dayAttendees, setDayAttendees] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
-  const [allUsers, setAllUsers] = useState([]);
   const [editingAttId, setEditingAttId] = useState(null);
   const [moveDate, setMoveDate] = useState('');
-  const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
 
-  const isAdmin = currentUser && (currentUser.isAdmin || currentUser.email === 'admin@admin.com');
+  const isAdmin = currentUser && (currentUser.isAdmin || (currentUser.email && currentUser.email.toLowerCase() === 'admin@admin.com'));
 
   // 하루 전 날짜로 이동 (UTC 시간대 오차 방지 파싱)
   const handlePrevDay = () => {
@@ -133,20 +131,7 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
     return date.getDay() === 6; // 토요일
   };
 
-  // 관리자일 경우 전체 회원 목록 로드
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (isAdmin) {
-        try {
-          const users = await dbService.getAllUsers();
-          setAllUsers(users);
-        } catch (err) {
-          console.error('회원 목록 조회 실패:', err);
-        }
-      }
-    };
-    fetchUsers();
-  }, [currentUser, isAdmin, attendanceList]);
+
 
   // 날짜 클릭 이벤트 핸들러
   const handleDayClick = async (day) => {
@@ -226,22 +211,7 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
     }
   };
 
-  // 관리자용: 출석 강제 추가 처리
-  const handleAddAttendee = async (e) => {
-    e.preventDefault();
-    if (!selectedUserToAdd) return;
-    const targetUser = allUsers.find(u => u.id === selectedUserToAdd);
-    if (!targetUser) return;
 
-    try {
-      await dbService.toggleAttendance(selectedDateStr, true, targetUser);
-      setSelectedUserToAdd('');
-      onRefreshAttendance();
-    } catch (err) {
-      setErrorMsg('출석 추가에 실패했습니다.');
-      console.error(err);
-    }
-  };
 
   // 선택된 날짜의 참석자 리스트 필터링
   useEffect(() => {
@@ -402,7 +372,7 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
           <div className="day-attendees-title">참여자 명단</div>
           
           {dayAttendees.length > 0 ? (
-            <div className="day-attendees-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+            <div className="day-attendees-list" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
               {dayAttendees.map((a) => {
                 const isEditing = editingAttId === a.id;
                 return (
@@ -481,55 +451,7 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
             <div className="no-attendees">아직 신청자가 없습니다. 제일 먼저 신청해 보세요! 🏸</div>
           )}
 
-          {/* 최고 관리자 전용: 출석 수동 추가 폼 */}
-          {isAdmin && (
-            <div style={{
-              marginTop: '16px',
-              padding: '12px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              borderRadius: '12px',
-              border: '1px solid var(--glass-border)',
-              width: '100%',
-              boxSizing: 'border-box'
-            }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-neon)', marginBottom: '8px' }}>
-                🛠️ 최고 관리자 전용: 출석 인원 추가
-              </div>
-              <form onSubmit={handleAddAttendee} style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  value={selectedUserToAdd}
-                  onChange={(e) => setSelectedUserToAdd(e.target.value)}
-                  style={{
-                    flex: 1,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    color: 'white',
-                    border: '1px solid var(--glass-border)',
-                    borderRadius: '8px',
-                    padding: '6px 12px',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  <option value="">-- 추가할 회원 선택 --</option>
-                  {allUsers
-                    .filter(u => !dayAttendees.some(att => att.user_id === u.id))
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.name} ({u.email || '이메일 없음'})
-                      </option>
-                    ))
-                  }
-                </select>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary" 
-                  style={{ padding: '6px 12px', fontSize: '0.85rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-                  disabled={!selectedUserToAdd}
-                >
-                  추가
-                </button>
-              </form>
-            </div>
-          )}
+
 
           {/* 조작 설명 문구 (가독성 배너화) */}
           <div className="day-detail-guide">

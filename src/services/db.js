@@ -17,7 +17,9 @@ import {
   addDoc, 
   query, 
   where, 
-  orderBy 
+  orderBy,
+  writeBatch,
+  updateDoc
 } from 'firebase/firestore';
 
 // 환경 변수에서 Firebase 정보 추출
@@ -156,8 +158,18 @@ export const dbService = {
         email: userCredential.user.email,
         name: userCredential.user.displayName || '사용자',
       };
-      if (user.email === 'admin@admin.com') {
+      if (user.email && user.email.toLowerCase() === 'admin@admin.com') {
         user.isAdmin = true;
+        user.name = '관리자';
+        try {
+          await updateProfile(userCredential.user, { displayName: '관리자' });
+          const userDocRef = doc(db, 'users', userCredential.user.uid);
+          await setDoc(userDocRef, { name: '관리자' }, { merge: true });
+          // 기존 출석 데이터의 user_name도 '관리자'로 일괄 동기화
+          this.fixAdminAttendanceNames(user.id);
+        } catch (e) {
+          console.error('관리자 이름 동기화 실패:', e);
+        }
       }
       this.saveLocalSession(user);
       return user;
@@ -165,11 +177,11 @@ export const dbService = {
       // LocalStorage 로그인 (로컬 데모 개발 모드 전용)
       // 최고 관리자 계정 가상 인증 처리
       const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '2026';
-      if (email === 'admin@admin.com' && password === adminPassword) {
+      if (email && email.toLowerCase() === 'admin@admin.com' && password === adminPassword) {
         const adminUser = {
           id: 'user-admin',
           email: 'admin@admin.com',
-          name: '최고 관리자',
+          name: '관리자',
           isAdmin: true
         };
         this.saveLocalSession(adminUser);
@@ -198,7 +210,8 @@ export const dbService = {
     const localUserStr = localStorage.getItem(CURRENT_USER_KEY);
     if (localUserStr) {
       const localUser = JSON.parse(localUserStr);
-      if (localUser.email === 'admin@admin.com') {
+      if (localUser.email && localUser.email.toLowerCase() === 'admin@admin.com') {
+        localUser.name = '관리자';
         return localUser;
       }
     }
@@ -214,8 +227,16 @@ export const dbService = {
               email: user.email,
               name: user.displayName || '사용자'
             };
-            if (user.email === 'admin@admin.com') {
+            if (user.email && user.email.toLowerCase() === 'admin@admin.com') {
               userData.isAdmin = true;
+              userData.name = '관리자';
+              if (user.displayName !== '관리자') {
+                updateProfile(user, { displayName: '관리자' }).catch(console.error);
+              }
+              const userDocRef = doc(db, 'users', user.uid);
+              setDoc(userDocRef, { name: '관리자' }, { merge: true }).catch(console.error);
+              // 기존 출석 데이터의 user_name도 '관리자'로 일괄 동기화
+              this.fixAdminAttendanceNames(user.uid);
             }
             resolve(userData);
           } else {
@@ -224,7 +245,14 @@ export const dbService = {
         });
       });
     } else {
-      return localUserStr ? JSON.parse(localUserStr) : null;
+      if (localUserStr) {
+        const user = JSON.parse(localUserStr);
+        if (user.email && user.email.toLowerCase() === 'admin@admin.com') {
+          user.name = '관리자';
+        }
+        return user;
+      }
+      return null;
     }
   },
 
@@ -455,6 +483,32 @@ export const dbService = {
       }
       
       localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify(allAttendance));
+    }
+  },
+
+  async fixAdminAttendanceNames(userId) {
+    if (!isFirebaseConfigured || !userId) return;
+    try {
+      const attendanceRef = collection(db, 'attendance');
+      const q = query(attendanceRef, where('user_id', '==', userId));
+      const querySnapshot = await getDocs(q);
+      
+      const batch = writeBatch(db);
+      let count = 0;
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.user_name !== '관리자') {
+          batch.update(doc.ref, { user_name: '관리자' });
+          count++;
+        }
+      });
+      
+      if (count > 0) {
+        await batch.commit();
+        console.log(`관리자 출석 이름 ${count}개 수정 완료.`);
+      }
+    } catch (e) {
+      console.error('관리자 출석 이름 일괄 수정 실패:', e);
     }
   }
 };
