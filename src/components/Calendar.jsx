@@ -26,6 +26,28 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
   const [dayAttendees, setDayAttendees] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // 하루 전 날짜로 이동
+  const handlePrevDay = () => {
+    setErrorMsg('');
+    if (!selectedDateStr) return;
+    const date = new Date(selectedDateStr + 'T00:00:00');
+    date.setDate(date.getDate() - 1);
+    const prevStr = date.toISOString().split('T')[0];
+    setSelectedDateStr(prevStr);
+    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
+  };
+
+  // 하루 다음 날짜로 이동
+  const handleNextDay = () => {
+    setErrorMsg('');
+    if (!selectedDateStr) return;
+    const date = new Date(selectedDateStr + 'T00:00:00');
+    date.setDate(date.getDate() + 1);
+    const nextStr = date.toISOString().split('T')[0];
+    setSelectedDateStr(nextStr);
+    setCurrentDate(new Date(date.getFullYear(), date.getMonth(), 1));
+  };
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1; // 1-indexed
 
@@ -229,7 +251,27 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
       {selectedDateStr && (
         <div className="day-detail-panel">
           <div className="day-detail-header">
-            <span className="day-detail-date">{selectedDateStr} 출석 현황</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={handlePrevDay} 
+                className="calendar-nav-btn" 
+                style={{ width: '28px', height: '28px', borderRadius: '8px', padding: 0 }}
+                title="이전 날짜"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span className="day-detail-date" style={{ fontWeight: 800, fontSize: '1rem' }}>{selectedDateStr}</span>
+              <button 
+                onClick={handleNextDay} 
+                className="calendar-nav-btn" 
+                style={{ width: '28px', height: '28px', borderRadius: '8px', padding: 0 }}
+                title="다음 날짜"
+              >
+                <ChevronRight size={14} />
+              </button>
+              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>출석 현황</span>
+            </div>
+            
             <div className="badge badge-blue">
               <Users size={12} style={{ marginRight: '4px' }} />
               총 {dayAttendees.length}명 참여 예정
