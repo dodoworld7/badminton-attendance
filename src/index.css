@@ -367,12 +367,35 @@ body {
   background: #ffffff;
   border: 1px solid var(--glass-border);
   border-radius: 8px;
-  padding: 4px 6px;
+  padding: 3px 4px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   touch-action: manipulation;
   box-sizing: border-box;
+  min-width: 0; /* 그리드 내부 오버플로우 차단 */
+}
+
+@media (max-width: 480px) {
+  .glass-panel {
+    padding: 10px;
+  }
+  .calendar-grid {
+    gap: 2px;
+  }
+  .calendar-day-cell {
+    padding: 2px;
+    border-radius: 6px;
+  }
+  .calendar-day-number {
+    font-size: 0.7rem;
+  }
+  .calendar-attendance-count {
+    bottom: 1px;
+    right: 1px;
+    font-size: 0.55rem;
+    padding: 0px 2px;
+  }
 }
 
 .calendar-day-number {
