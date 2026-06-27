@@ -68,6 +68,7 @@ export default function App() {
         currentUser={currentUser}
         onOpenLogin={() => setIsLoginOpen(true)}
         onLogout={handleLogout}
+        isFirebaseConfigured={isFirebaseConfigured}
       />
 
       {/* 왼쪽: 메인 달력 */}
@@ -88,32 +89,6 @@ export default function App() {
           currentUser={currentUser}
           selectedDateStr={selectedDateStr}
         />
-      </div>
-
-      {/* 전체 화면 하단 상태 표시 바 */}
-      <div className="full-width-header" style={{ gridColumn: 'span 2' }}>
-        <div className="db-status-banner">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Database size={16} />
-            <span>시스템 리소스 상태</span>
-          </div>
-
-          <div className="db-status-indicator">
-            {isFirebaseConfigured ? (
-              <>
-                <Wifi size={14} className="online" style={{ color: 'var(--accent-neon)' }} />
-                <span>Firebase 온라인 연동 중 (실시간 공유 가능)</span>
-                <span className="db-status-dot online"></span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={14} className="offline" style={{ color: 'var(--accent-blue)' }} />
-                <span>로컬 데모 모드 (브라우저 로컬 저장소 사용 중)</span>
-                <span className="db-status-dot offline"></span>
-              </>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* 로그인 모달 */}

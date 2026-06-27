@@ -3,9 +3,37 @@ import { MapPin, Clock, CalendarRange, UserCheck, ShieldAlert } from 'lucide-rea
 import bannerImg from '../assets/banner.png';
 import { isFirebaseConfigured } from '../services/db';
 
-export default function IntroCard({ currentUser, onOpenLogin, onLogout }) {
+export default function IntroCard({ currentUser, onOpenLogin, onLogout, isFirebaseConfigured }) {
   return (
     <div className="glass-panel active-glow full-width-header">
+      {/* 우측 상단 미니 LED 상태 표시등 */}
+      <div 
+        style={{ 
+          position: 'absolute', 
+          top: '16px', 
+          right: '16px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '6px',
+          zIndex: 10
+        }}
+      >
+        <span 
+          style={{ 
+            width: '8px', 
+            height: '8px', 
+            borderRadius: '50%', 
+            background: isFirebaseConfigured ? '#10b981' : '#3b82f6',
+            boxShadow: isFirebaseConfigured ? '0 0 8px rgba(16, 185, 129, 0.6)' : '0 0 8px rgba(59, 130, 246, 0.6)',
+            display: 'inline-block'
+          }}
+          title={isFirebaseConfigured ? 'Firebase 온라인 연동 중' : '로컬 데모 모드'}
+        />
+        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+          {isFirebaseConfigured ? 'LIVE' : 'DEMO'}
+        </span>
+      </div>
+
       <div className="intro-banner">
         {/* 배너 이미지 영역 */}
         <div className="intro-image-container">
