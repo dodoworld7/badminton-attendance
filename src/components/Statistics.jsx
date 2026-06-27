@@ -18,10 +18,17 @@ export default function Statistics({ currentUser, attendanceList, currentDate })
       if (attYear === currentYear && attMonth === currentMonth) {
         if (userCounts[att.user_id]) {
           userCounts[att.user_id].count += 1;
+          if (att.created_at) {
+            const attTime = new Date(att.created_at).getTime();
+            if (attTime < userCounts[att.user_id].firstCreatedAt) {
+              userCounts[att.user_id].firstCreatedAt = attTime;
+            }
+          }
         } else {
           userCounts[att.user_id] = {
             name: att.user_name,
-            count: 1
+            count: 1,
+            firstCreatedAt: att.created_at ? new Date(att.created_at).getTime() : Infinity
           };
         }
       }
@@ -31,9 +38,15 @@ export default function Statistics({ currentUser, attendanceList, currentDate })
       .map(([userId, info]) => ({
         userId,
         name: info.name,
-        count: info.count
+        count: info.count,
+        firstCreatedAt: info.firstCreatedAt
       }))
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => {
+        if (b.count !== a.count) {
+          return b.count - a.count;
+        }
+        return a.firstCreatedAt - b.firstCreatedAt;
+      });
   };
 
   const ranking = calculateRanking();

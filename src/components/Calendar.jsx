@@ -213,10 +213,15 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
 
 
 
-  // 선택된 날짜의 참석자 리스트 필터링
+  // 선택된 날짜의 참석자 리스트 필터링 (등록 시간 오름차순 정렬)
   useEffect(() => {
     if (selectedDateStr) {
       const attendees = attendanceList.filter((a) => a.attendance_date === selectedDateStr);
+      attendees.sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeA - timeB;
+      });
       setDayAttendees(attendees);
     } else {
       setSelectedDateStr(todayStr);
