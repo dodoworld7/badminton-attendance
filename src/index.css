@@ -768,6 +768,30 @@ body {
   color: var(--accent-neon);
 }
 
+/* Badge Styles (No-wrap & Bold for Mobile legibility) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 800; /* 진하게 */
+  white-space: nowrap; /* 세로 찌그러짐 방지 */
+}
+
+.badge-neon {
+  background: rgba(5, 150, 105, 0.12);
+  color: var(--accent-neon);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+}
+
+.badge-blue {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent-blue);
+  border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
 /* Status Banner */
 .db-status-banner {
   flex-direction: column;
