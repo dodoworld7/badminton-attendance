@@ -1,30 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Users, Check, AlertCircle, CalendarDays } from 'lucide-react';
+import * as HolidaysKR from '@hyunbinseo/holidays-kr';
 import { dbService } from '../services/db';
 
-// 2026년 기준 대한민국 주요 공휴일 목록 (MM-DD 형식) - 달력 내 빨간색 표시용
-const HOLIDAYS_2026 = [
-  '01-01', // 신정
-  '02-16', '02-17', '02-18', // 설날 연휴
-  '03-01', // 삼일절
-  '03-02', // 대체공휴일 (삼일절)
-  '05-05', // 어린이날 / 석가탄신일
-  '05-06', // 대체공휴일
-  '06-06', // 현충일
-  '08-15', // 광복절
-  '08-17', // 대체공휴일 (광복절)
-  '09-24', '09-25', '09-26', // 추석 연휴
-  '10-03', // 개천절
-  '10-05', // 대체공휴일 (개천절)
-  '10-09', // 한글날
-  '12-25', // 성탄절
-];
 
 export default function Calendar({ currentUser, attendanceList, onRefreshAttendance, onOpenLogin }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateStr, setSelectedDateStr] = useState('');
   const [dayAttendees, setDayAttendees] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
+  const [allUsers, setAllUsers] = useState([]);
+  const [editingAttId, setEditingAttId] = useState(null);
+  const [moveDate, setMoveDate] = useState('');
+  const [selectedUserToAdd, setSelectedUserToAdd] = useState('');
+
+  const isAdmin = currentUser && (currentUser.isAdmin || currentUser.email === 'admin@admin.com');
 
   // 하루 전 날짜로 이동 (UTC 시간대 오차 방지 파싱)
   const handlePrevDay = () => {
@@ -86,18 +76,51 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
 
   // 일요일/공휴일 여부 체크 (빨간색 표시용)
   const isRedDay = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
+    const parts = dateStr.split('-');
+    const yearNum = parseInt(parts[0], 10);
+    const monthNum = parseInt(parts[1], 10);
+    const dayNum = parseInt(parts[2], 10);
+    const date = new Date(yearNum, monthNum - 1, dayNum);
+    
     if (date.getDay() === 0) return true; // 일요일
 
-    const mmDd = dateStr.substring(5); // MM-DD
-    return HOLIDAYS_2026.includes(mmDd);
+    // 패키지에서 제공하는 연도별 데이터를 동기식으로 조회하여 매칭
+    const yearKey = `y${yearNum}`;
+    const yearData = HolidaysKR[yearKey];
+    if (yearData && (dateStr in yearData)) {
+      return true; // 공휴일
+    }
+
+    // 7월 17일 제헌절 등 법정 공휴일 예외 추가 처리
+    if (monthNum === 7 && dayNum === 17) return true;
+
+    return false;
   };
 
   // 토요일 여부 체크 (파란색 표시용)
   const isBlueDay = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
+    const parts = dateStr.split('-');
+    const yearNum = parseInt(parts[0], 10);
+    const monthNum = parseInt(parts[1], 10);
+    const dayNum = parseInt(parts[2], 10);
+    const date = new Date(yearNum, monthNum - 1, dayNum);
     return date.getDay() === 6; // 토요일
   };
+
+  // 관리자일 경우 전체 회원 목록 로드
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (isAdmin) {
+        try {
+          const users = await dbService.getAllUsers();
+          setAllUsers(users);
+        } catch (err) {
+          console.error('회원 목록 조회 실패:', err);
+        }
+      }
+    };
+    fetchUsers();
+  }, [currentUser, isAdmin, attendanceList]);
 
   // 날짜 클릭 이벤트 핸들러
   const handleDayClick = async (day) => {
@@ -112,11 +135,14 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
       return;
     }
 
-    // 2. 과거 날짜 수정 불가 정책 적용
-    const targetDate = new Date(dateStr + 'T00:00:00');
-    const todayDate = new Date(todayStr + 'T00:00:00');
+    // 2. 과거 날짜 수정 불가 정책 적용 (최고 관리자는 예외)
+    const parts = dateStr.split('-');
+    const targetDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    
+    const todayParts = todayStr.split('-');
+    const todayDate = new Date(parseInt(todayParts[0], 10), parseInt(todayParts[1], 10) - 1, parseInt(todayParts[2], 10));
 
-    if (targetDate < todayDate) {
+    if (targetDate < todayDate && !isAdmin) {
       setErrorMsg('과거 날짜의 출석은 수정(참여/취소)할 수 없습니다. 🚫');
       return;
     }
@@ -132,6 +158,61 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
       onRefreshAttendance();
     } catch (err) {
       setErrorMsg('출석 상태를 변경하는 도중 오류가 발생했습니다.');
+      console.error(err);
+    }
+  };
+
+  // 관리자용: 출석 취소 처리
+  const handleDeleteAttendee = async (attendanceRecord) => {
+    if (confirm(`${attendanceRecord.user_name} 회원의 ${selectedDateStr} 출석을 취소하시겠습니까?`)) {
+      try {
+        await dbService.toggleAttendance(
+          selectedDateStr, 
+          false, 
+          { id: attendanceRecord.user_id, name: attendanceRecord.user_name }
+        );
+        onRefreshAttendance();
+      } catch (err) {
+        setErrorMsg('출석 취소에 실패했습니다.');
+        console.error(err);
+      }
+    }
+  };
+
+  // 관리자용: 출석 날짜 변경(이동) 처리
+  const handleMoveAttendance = async (attId, newDate) => {
+    if (!newDate) return;
+    try {
+      await dbService.changeAttendanceDate(attId, newDate);
+      setEditingAttId(null);
+      
+      // 날짜 이동 후 해당 날짜로 포커스를 맞춤
+      setSelectedDateStr(newDate);
+      
+      // 연도/월이 달라질 경우 달력 현재 날짜도 변경
+      const parts = newDate.split('-');
+      setCurrentDate(new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, 1));
+      
+      onRefreshAttendance();
+    } catch (err) {
+      setErrorMsg('출석 날짜 변경에 실패했습니다.');
+      console.error(err);
+    }
+  };
+
+  // 관리자용: 출석 강제 추가 처리
+  const handleAddAttendee = async (e) => {
+    e.preventDefault();
+    if (!selectedUserToAdd) return;
+    const targetUser = allUsers.find(u => u.id === selectedUserToAdd);
+    if (!targetUser) return;
+
+    try {
+      await dbService.toggleAttendance(selectedDateStr, true, targetUser);
+      setSelectedUserToAdd('');
+      onRefreshAttendance();
+    } catch (err) {
+      setErrorMsg('출석 추가에 실패했습니다.');
       console.error(err);
     }
   };
@@ -155,8 +236,10 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
   // 날짜 정보 헬퍼 (클래스네임 바인딩)
   const getDayClassNames = (day) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const targetDate = new Date(dateStr + 'T00:00:00');
-    const todayDate = new Date(todayStr + 'T00:00:00');
+    const parts = dateStr.split('-');
+    const targetDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const todayParts = todayStr.split('-');
+    const todayDate = new Date(parseInt(todayParts[0], 10), parseInt(todayParts[1], 10) - 1, parseInt(todayParts[2], 10));
 
     let classes = 'calendar-day-cell';
     
@@ -293,16 +376,133 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
           <div className="day-attendees-title">참여자 명단</div>
           
           {dayAttendees.length > 0 ? (
-            <div className="day-attendees-list">
-              {dayAttendees.map((a) => (
-                <div key={a.id} className="attendee-badge">
-                  <span className="attendee-dot-active"></span>
-                  <span>{a.user_name}</span>
-                </div>
-              ))}
+            <div className="day-attendees-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+              {dayAttendees.map((a) => {
+                const isEditing = editingAttId === a.id;
+                return (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div className="attendee-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="attendee-dot-active"></span>
+                      <span style={{ fontWeight: 600 }}>{a.user_name}</span>
+                      
+                      {isAdmin && !isEditing && (
+                        <div style={{ display: 'flex', gap: '6px', marginLeft: '6px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '6px' }}>
+                          <button 
+                            onClick={() => {
+                              setEditingAttId(a.id);
+                              setMoveDate(selectedDateStr);
+                            }}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', fontSize: '0.85rem' }}
+                            title="날짜 수정(이동)"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteAttendee(a)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', fontSize: '0.85rem' }}
+                            title="출석 취소"
+                          >
+                            ❌
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {isAdmin && isEditing && (
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        background: 'rgba(255, 255, 255, 0.05)', 
+                        padding: '4px 8px', 
+                        borderRadius: '8px', 
+                        border: '1px solid var(--glass-border)' 
+                      }}>
+                        <input 
+                          type="date" 
+                          value={moveDate}
+                          onChange={(e) => setMoveDate(e.target.value)}
+                          style={{
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            color: 'white',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '4px',
+                            padding: '2px 4px',
+                            fontSize: '0.8rem'
+                          }}
+                        />
+                        <button 
+                          onClick={() => handleMoveAttendance(a.id, moveDate)}
+                          className="badge badge-neon"
+                          style={{ border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 6px' }}
+                        >
+                          이동
+                        </button>
+                        <button 
+                          onClick={() => setEditingAttId(null)}
+                          className="badge"
+                          style={{ border: 'none', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 6px', background: '#6b7280' }}
+                        >
+                          취소
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="no-attendees">아직 신청자가 없습니다. 제일 먼저 신청해 보세요! 🏸</div>
+          )}
+
+          {/* 최고 관리자 전용: 출석 수동 추가 폼 */}
+          {isAdmin && (
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              background: 'rgba(255, 255, 255, 0.02)',
+              borderRadius: '12px',
+              border: '1px solid var(--glass-border)',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent-neon)', marginBottom: '8px' }}>
+                🛠️ 최고 관리자 전용: 출석 인원 추가
+              </div>
+              <form onSubmit={handleAddAttendee} style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={selectedUserToAdd}
+                  onChange={(e) => setSelectedUserToAdd(e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    color: 'white',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  <option value="">-- 추가할 회원 선택 --</option>
+                  {allUsers
+                    .filter(u => !dayAttendees.some(att => att.user_id === u.id))
+                    .map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} ({u.email || '이메일 없음'})
+                      </option>
+                    ))
+                  }
+                </select>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ padding: '6px 12px', fontSize: '0.85rem', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                  disabled={!selectedUserToAdd}
+                >
+                  추가
+                </button>
+              </form>
+            </div>
           )}
 
           {/* 조작 설명 문구 (가독성 배너화) */}
@@ -311,7 +511,10 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
               💡 <strong>오늘 또는 미래 날짜</strong>의 달력 칸을 클릭하면 출석 참여/취소를 간편하게 토글할 수 있습니다.
             </span>
             <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
-              (과거 날짜는 출석 조작이 비활성화됩니다.)
+              {isAdmin 
+                ? '(최고 관리자 권한 활성화됨: 과거 날짜 조작 및 타인 출석 관리가 가능합니다.)' 
+                : '(과거 날짜는 출석 조작이 비활성화됩니다.)'
+              }
             </span>
           </div>
         </div>
