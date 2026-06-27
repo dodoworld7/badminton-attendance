@@ -346,8 +346,7 @@ export const dbService = {
       const messagesRef = collection(db, 'social_messages');
       const q = query(
         messagesRef, 
-        where('message_date', '==', dateString),
-        orderBy('created_at', 'asc')
+        where('message_date', '==', dateString)
       );
       
       const querySnapshot = await getDocs(q);
@@ -355,6 +354,8 @@ export const dbService = {
       querySnapshot.forEach((doc) => {
         messages.push({ id: doc.id, ...doc.data() });
       });
+      // 복합 인덱스 요구 우회를 위해 클라이언트 사이드 정렬 수행
+      messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       return messages;
     } else {
       const allMessages = JSON.parse(localStorage.getItem(MOCK_MESSAGES_KEY) || '[]');
