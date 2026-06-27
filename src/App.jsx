@@ -97,7 +97,7 @@ export default function App() {
         />
         <SocialBoard
           currentUser={currentUser}
-          selectedDateStr={selectedDateStr}
+          currentDate={currentDate}
         />
       </div>
 

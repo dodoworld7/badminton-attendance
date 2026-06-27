@@ -2,16 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, Trash2 } from 'lucide-react';
 import { dbService } from '../services/db';
 
-export default function SocialBoard({ currentUser, selectedDateStr }) {
+export default function SocialBoard({ currentUser, currentDate }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 선택된 날짜가 바뀔 때마다 메시지 리스트 다시 가져오기
+  const date = currentDate || new Date();
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+
+  // 선택된 월이 바뀔 때마다 메시지 리스트 다시 가져오기
   const fetchMessages = async () => {
-    if (!selectedDateStr) return;
     try {
-      const msgs = await dbService.getMessages(selectedDateStr);
+      const msgs = await dbService.getMessages(year, month);
       setMessages(msgs);
     } catch (err) {
       console.error('메시지를 불러오는 도중 오류 발생:', err);
@@ -20,15 +23,18 @@ export default function SocialBoard({ currentUser, selectedDateStr }) {
 
   useEffect(() => {
     fetchMessages();
-  }, [selectedDateStr]);
+  }, [currentDate]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputText.trim() || !currentUser || loading) return;
 
     setLoading(true);
+    // 한마디를 적는 시점의 실시간 날짜(오늘) 기입
+    const todayStr = new Date().toISOString().split('T')[0];
+    
     try {
-      await dbService.addMessage(selectedDateStr, inputText, currentUser);
+      await dbService.addMessage(todayStr, inputText, currentUser);
       setInputText('');
       await fetchMessages(); // 리스트 갱신
     } catch (err) {
@@ -49,10 +55,14 @@ export default function SocialBoard({ currentUser, selectedDateStr }) {
     }
   };
 
-  const formatTime = (isoString) => {
+  // 날짜와 시간을 함께 포맷팅 (예: 06-27 오후 11:56)
+  const formatDateTime = (isoString) => {
     if (!isoString) return '';
-    const date = new Date(isoString);
-    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    const d = new Date(isoString);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const timeStr = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    return `${mm}-${dd} ${timeStr}`;
   };
 
   return (
@@ -64,7 +74,7 @@ export default function SocialBoard({ currentUser, selectedDateStr }) {
 
       <div className="social-board-container">
         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-          📅 {selectedDateStr} 운동에 대해 소통해 보세요!
+          📅 {year}년 {month}월 운동에 대해 소통해 보세요!
         </p>
 
         {/* 메시지 리스트 스크롤러 */}
@@ -75,7 +85,7 @@ export default function SocialBoard({ currentUser, selectedDateStr }) {
                 <div className="social-msg-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="social-msg-author">{msg.user_name}</span>
-                    <span className="social-msg-time">{formatTime(msg.created_at)}</span>
+                    <span className="social-msg-time">{formatDateTime(msg.created_at)}</span>
                   </div>
                   {currentUser && currentUser.id === msg.user_id && (
                     <button
@@ -92,7 +102,7 @@ export default function SocialBoard({ currentUser, selectedDateStr }) {
             ))
           ) : (
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '30px 0' }}>
-              아직 작성된 한마디가 없습니다.
+              아직 {month}월에 작성된 한마디가 없습니다.
             </div>
           )}
         </div>
@@ -124,7 +134,7 @@ export default function SocialBoard({ currentUser, selectedDateStr }) {
             color: 'var(--text-muted)',
             marginTop: '8px'
           }}>
-            로그인하시면 해당 날짜에 한마디를 남기실 수 있습니다. 😊
+            로그인하시면 한마디를 남기실 수 있습니다. 😊
           </div>
         )}
       </div>

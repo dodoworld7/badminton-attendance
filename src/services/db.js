@@ -341,12 +341,16 @@ export const dbService = {
   // ------------------------------------------
   // 3. 한마디 방명록 API
   // ------------------------------------------
-  async getMessages(dateString) {
+  async getMessages(year, month) {
     if (isFirebaseConfigured) {
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+
       const messagesRef = collection(db, 'social_messages');
       const q = query(
         messagesRef, 
-        where('message_date', '==', dateString)
+        where('message_date', '>=', startDate),
+        where('message_date', '<=', endDate)
       );
       
       const querySnapshot = await getDocs(q);
@@ -359,7 +363,10 @@ export const dbService = {
       return messages;
     } else {
       const allMessages = JSON.parse(localStorage.getItem(MOCK_MESSAGES_KEY) || '[]');
-      return allMessages.filter(m => m.message_date === dateString);
+      return allMessages.filter(m => {
+        const parts = m.message_date.split('-');
+        return parseInt(parts[0], 10) === year && parseInt(parts[1], 10) === month;
+      });
     }
   },
 
