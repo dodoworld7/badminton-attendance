@@ -54,7 +54,7 @@ const CURRENT_USER_KEY = 'badminton_current_user';
 const seedMockData = () => {
   if (!localStorage.getItem(MOCK_USERS_KEY)) {
     const mockUsers = [
-      { id: 'user-admin', email: 'admin@admin.com', name: '최고 관리자', password: '2026', isAdmin: true },
+      { id: 'user-admin', email: 'admin@admin.com', name: '최고 관리자', password: import.meta.env.VITE_ADMIN_PASSWORD || '2026', isAdmin: true },
       { id: 'user-dohyun', email: 'dohyun@badminton.com', name: '미스터 도현', password: 'password123' },
       { id: 'user-minsu', email: 'minsu@badminton.com', name: '김민수', password: 'password123' },
       { id: 'user-suji', email: 'suji@badminton.com', name: '이수지', password: 'password123' },
@@ -164,7 +164,8 @@ export const dbService = {
     } else {
       // LocalStorage 로그인 (로컬 데모 개발 모드 전용)
       // 최고 관리자 계정 가상 인증 처리
-      if (email === 'admin@admin.com' && password === '2026') {
+      const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '2026';
+      if (email === 'admin@admin.com' && password === adminPassword) {
         const adminUser = {
           id: 'user-admin',
           email: 'admin@admin.com',
