@@ -73,19 +73,19 @@ export default function SocialBoard({ currentUser, selectedDateStr }) {
             messages.map((msg) => (
               <div key={msg.id} className="social-msg-item">
                 <div className="social-msg-header">
-                  <span className="social-msg-author">{msg.user_name}</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="social-msg-author">{msg.user_name}</span>
                     <span className="social-msg-time">{formatTime(msg.created_at)}</span>
-                    {currentUser && currentUser.id === msg.user_id && (
-                      <button
-                        className="social-msg-delete"
-                        onClick={() => handleDeleteMessage(msg.id)}
-                        title="삭제"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
                   </div>
+                  {currentUser && currentUser.id === msg.user_id && (
+                    <button
+                      className="social-msg-delete"
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      title="삭제"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
                 <p className="social-msg-text">{msg.message_text}</p>
               </div>
