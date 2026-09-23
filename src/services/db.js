@@ -589,7 +589,11 @@ export const dbService = {
   async updateUserName(targetUser, newName) {
     const trimmedName = newName.trim();
     if (!trimmedName) throw new Error('새 이름을 입력해 주세요.');
-    const userId = targetUser.id;
+    const userId = typeof targetUser === 'object' && targetUser !== null
+      ? (targetUser.id || targetUser.user_id)
+      : targetUser;
+
+    if (!userId) throw new Error('유효한 회원 ID를 찾을 수 없습니다.');
 
     if (isFirebaseConfigured) {
       // 1. users 컬렉션 업데이트

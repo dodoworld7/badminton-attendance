@@ -323,6 +323,8 @@ export default function AdminPanel({
                 onChange={(e) => setNewMemberName(e.target.value)}
                 style={{
                   flex: 1,
+                  minWidth: 0,
+                  boxSizing: 'border-box',
                   padding: '8px 12px',
                   borderRadius: '8px',
                   border: '1px solid #cbd5e1',
@@ -389,66 +391,85 @@ export default function AdminPanel({
               오타가 있거나 개명한 회원의 이름을 수정합니다.
             </p>
 
-            <form onSubmit={handleRenameMember} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  value={renameTargetId}
-                  onChange={(e) => {
-                    setRenameTargetId(e.target.value);
-                    const target = allUsers.find(u => u.id === e.target.value);
-                    if (target) setRenameNewName(target.name);
-                    else setRenameNewName('');
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.82rem',
-                    background: '#ffffff'
-                  }}
-                >
-                  <option value="">수정할 회원 선택...</option>
-                  {allUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} {u.isAdmin ? '(관리자)' : ''}
-                    </option>
-                  ))}
-                </select>
+            <form onSubmit={handleRenameMember} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                <div style={{ width: '100%' }}>
+                  <label style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '3px' }}>
+                    1. 변경할 회원 선택
+                  </label>
+                  <select
+                    value={renameTargetId}
+                    onChange={(e) => {
+                      setRenameTargetId(e.target.value);
+                      const target = allUsers.find(u => u.id === e.target.value);
+                      if (target) setRenameNewName(target.name);
+                      else setRenameNewName('');
+                    }}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      minWidth: 0,
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.84rem',
+                      background: '#ffffff',
+                      color: '#1e293b'
+                    }}
+                  >
+                    <option value="">수정할 회원을 선택하세요...</option>
+                    {allUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} {u.isAdmin ? '(관리자)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                <input
-                  type="text"
-                  placeholder="새 이름"
-                  value={renameNewName}
-                  onChange={(e) => setRenameNewName(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.85rem',
-                    outline: 'none'
-                  }}
-                />
+                <div style={{ width: '100%' }}>
+                  <label style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '3px' }}>
+                    2. 새로운 이름 입력
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="새로운 이름 입력 (예: 유재준)"
+                    value={renameNewName}
+                    onChange={(e) => setRenameNewName(e.target.value)}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      minWidth: 0,
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                      color: '#1e293b'
+                    }}
+                  />
+                </div>
               </div>
 
               <button
                 type="submit"
                 disabled={renameLoading || !renameTargetId || !renameNewName.trim()}
                 style={{
-                  alignSelf: 'flex-end',
-                  background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                  color: '#ffffff',
+                  width: '100%',
+                  background: (renameTargetId && renameNewName.trim()) 
+                    ? 'linear-gradient(135deg, #2563eb, #3b82f6)' 
+                    : '#e2e8f0',
+                  color: (renameTargetId && renameNewName.trim()) ? '#ffffff' : '#94a3b8',
                   border: 'none',
                   borderRadius: '8px',
-                  padding: '7px 14px',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  opacity: (renameLoading || !renameTargetId || !renameNewName.trim()) ? 0.6 : 1
+                  padding: '9px 14px',
+                  fontSize: '0.84rem',
+                  fontWeight: 800,
+                  cursor: (renameTargetId && renameNewName.trim()) ? 'pointer' : 'not-allowed',
+                  boxShadow: (renameTargetId && renameNewName.trim()) ? '0 2px 8px rgba(37,99,235,0.25)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                {renameLoading ? '변경 중...' : '이름 변경 적용'}
+                {renameLoading ? '이름 변경 적용 중...' : '이름 변경 적용'}
               </button>
             </form>
           </div>
