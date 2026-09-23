@@ -1,39 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Users, Check, AlertCircle, CalendarDays } from 'lucide-react';
-// 대한민국 공휴일 데이터셋 및 제헌절(7월 17일) 지정 상수
-const FIXED_HOLIDAYS = new Set([
-  '01-01', // 신정
-  '03-01', // 삼일절
-  '05-05', // 어린이날
-  '06-06', // 현충일
-  '07-17', // 제헌절
-  '08-15', // 광복절
-  '10-03', // 개천절
-  '10-09', // 한글날
-  '12-25'  // 성탄절
-]);
-
-const HOLIDAYS_SET = new Set([
-  // 2025년 대체/음력 공휴일
-  '2025-01-27', '2025-01-28', '2025-01-29', '2025-01-30',
-  '2025-03-03', '2025-05-06', '2025-06-03', '2025-10-05',
-  '2025-10-06', '2025-10-07', '2025-10-08',
-
-  // 2026년 대체/음력 공휴일
-  '2026-02-16', '2026-02-17', '2026-02-18', '2026-03-02',
-  '2026-05-24', '2026-05-25', '2026-06-03', '2026-08-17',
-  '2026-09-24', '2026-09-25', '2026-09-26', '2026-10-05',
-
-  // 2027년 대체/음력 공휴일
-  '2027-02-05', '2027-02-06', '2027-02-07', '2027-02-09',
-  '2027-05-13', '2027-05-14', '2027-08-16', '2027-09-14',
-  '2027-09-15', '2027-09-16', '2027-10-04', '2027-10-11'
-]);
-
+import { ChevronLeft, ChevronRight, Users, Check, AlertCircle, CalendarDays, ShieldAlert, Zap } from 'lucide-react';
+import { isRedDay, isBlueDay, isClubOperatingDay, getHolidayName } from '../utils/holidays';
 import { dbService } from '../services/db';
 
 
-export default function Calendar({ currentUser, attendanceList, onRefreshAttendance, onOpenLogin, currentDate, setCurrentDate }) {
+export default function Calendar({ currentUser, attendanceList, onRefreshAttendance, onOpenLogin, currentDate, setCurrentDate, onOpenQuickCheck }) {
   const [selectedDateStr, setSelectedDateStr] = useState('');
   const [dayAttendees, setDayAttendees] = useState([]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -107,44 +78,17 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
   // 현재 달의 날짜 배열 생성 (1 ~ totalDays)
   const daysInMonth = Array.from({ length: totalDays }, (_, i) => i + 1);
 
-  // 일요일/공휴일 여부 체크 (빨간색 표시용)
-  const isRedDay = (dateStr) => {
-    const parts = dateStr.split('-');
-    const yearNum = parseInt(parts[0], 10);
-    const monthNum = parseInt(parts[1], 10);
-    const dayNum = parseInt(parts[2], 10);
-    const date = new Date(yearNum, monthNum - 1, dayNum);
-    
-    // 1. 일요일 체크
-    if (date.getDay() === 0) return true;
-
-    // 2. 매년 고정 법정공휴일 및 제헌절(7월 17일) 체크
-    const mmDd = `${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-    if (FIXED_HOLIDAYS.has(mmDd)) return true;
-
-    // 3. 연도별 대체공휴일 및 음력 변동 공휴일 체크
-    if (HOLIDAYS_SET.has(dateStr)) return true;
-
-    return false;
-  };
-
-  // 토요일 여부 체크 (파란색 표시용)
-  const isBlueDay = (dateStr) => {
-    const parts = dateStr.split('-');
-    const yearNum = parseInt(parts[0], 10);
-    const monthNum = parseInt(parts[1], 10);
-    const dayNum = parseInt(parts[2], 10);
-    const date = new Date(yearNum, monthNum - 1, dayNum);
-    return date.getDay() === 6; // 토요일
-  };
-
-
-
   // 날짜 클릭 이벤트 핸들러
   const handleDayClick = async (day) => {
     setErrorMsg('');
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setSelectedDateStr(dateStr);
+
+    // 0. 클럽 운영일 체크 (토요일, 일요일, 공휴일만 운영)
+    if (!isClubOperatingDay(dateStr)) {
+      setErrorMsg('우리 클럽은 토요일, 일요일, 공휴일에만 운영합니다. 평일에는 출석 체크가 불가능합니다. 🏸');
+      return;
+    }
 
     // 1. 로그인 확인
     if (!currentUser) {
@@ -254,6 +198,7 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
     if (dateStr === todayStr) classes += ' today';
     if (targetDate < todayDate) classes += ' past';
     if (dateStr === selectedDateStr) classes += ' selected';
+    if (!isClubOperatingDay(dateStr)) classes += ' weekday-closed';
 
     return classes;
   };
@@ -321,12 +266,14 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
             const dayAttendeesList = getAttendeesForDay(day);
             const userIsAttending = currentUser && dayAttendeesList.some((a) => a.user_id === currentUser.id);
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isOperating = isClubOperatingDay(dateStr);
 
             return (
               <div
                 key={day}
                 className={getDayClassNames(day)}
                 onClick={() => handleDayClick(day)}
+                title={!isOperating ? '평일 (클럽 정기 운동 미운영일 - 토·일·공휴일만 운영)' : '클릭하여 출석 체크 / 취소'}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                   <span className="calendar-day-number" style={getDayNumberStyle(day)}>
@@ -363,7 +310,22 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
               >
                 <ChevronLeft size={14} />
               </button>
-              <span className="day-detail-date" style={{ fontWeight: 800, fontSize: '1rem' }}>{selectedDateStr}</span>
+              <span className="day-detail-date" style={{ fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{selectedDateStr}</span>
+                {getHolidayName(selectedDateStr) && (
+                  <span style={{
+                    fontSize: '0.75rem',
+                    color: '#dc2626',
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontWeight: 700
+                  }}>
+                    🌕 {getHolidayName(selectedDateStr)}
+                  </span>
+                )}
+              </span>
               <button 
                 onClick={handleNextDay} 
                 className="calendar-nav-btn" 
@@ -375,11 +337,55 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
               <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>출석 현황</span>
             </div>
             
-            <div className="badge badge-blue">
-              <Users size={12} style={{ marginRight: '4px' }} />
-              총 {dayAttendees.length}명 참여 예정
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="badge badge-blue">
+                <Users size={12} style={{ marginRight: '4px' }} />
+                총 {dayAttendees.length}명 참여 예정
+              </div>
+              {onOpenQuickCheck && (
+                <button
+                  onClick={() => onOpenQuickCheck(selectedDateStr)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(245,158,11,0.3)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="이 날짜로 빠른 출석 체크 모달 열기"
+                >
+                  <Zap size={12} />
+                  빠른 출석
+                </button>
+              )}
             </div>
           </div>
+
+          {!isClubOperatingDay(selectedDateStr) && (
+            <div style={{
+              margin: '12px 0 6px',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: '#fca5a5',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <ShieldAlert size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+              <span>본 날짜는 <strong>평일(미운영일)</strong>입니다. 우리 클럽은 <strong>토요일, 일요일, 공휴일</strong>에만 운영하므로 평일 출석은 체크할 수 없습니다. 🏸</span>
+            </div>
+          )}
 
           <div className="day-attendees-title">참여자 명단</div>
           

@@ -5,12 +5,14 @@ import Calendar from './components/Calendar';
 import Statistics from './components/Statistics';
 import SocialBoard from './components/SocialBoard';
 import LoginModal from './components/LoginModal';
-import { Database, Wifi, WifiOff } from 'lucide-react';
+import QuickCheck from './components/QuickCheck';
+import AdminPanel from './components/AdminPanel';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [attendanceList, setAttendanceList] = useState([]);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isQuickCheckOpen, setIsQuickCheckOpen] = useState(false);
   const getTodayStr = () => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -19,7 +21,15 @@ export default function App() {
     return `${yyyy}-${mm}-${dd}`;
   };
   const [selectedDateStr, setSelectedDateStr] = useState(getTodayStr());
+  const [quickCheckDateStr, setQuickCheckDateStr] = useState(getTodayStr());
   const [currentDate, setCurrentDate] = useState(new Date());
+
+  const handleOpenQuickCheck = (targetDateStr) => {
+    if (targetDateStr) {
+      setQuickCheckDateStr(targetDateStr);
+    }
+    setIsQuickCheckOpen(true);
+  };
 
   // 페이지 로드 시 로그인 세션 확인 및 출석 정보 로드
   useEffect(() => {
@@ -83,6 +93,13 @@ export default function App() {
         onOpenLogin={() => setIsLoginOpen(true)}
         onLogout={handleLogout}
         isFirebaseConfigured={isFirebaseConfigured}
+        onOpenQuickCheck={() => handleOpenQuickCheck(selectedDateStr)}
+      />
+
+      {/* 관리자 전용 회원 관리 패널 (관리자 로그인 시 노출) */}
+      <AdminPanel
+        currentUser={currentUser}
+        onRefreshAttendance={refreshAttendance}
       />
 
       {/* 왼쪽: 메인 달력 */}
@@ -93,6 +110,7 @@ export default function App() {
         onOpenLogin={() => setIsLoginOpen(true)}
         currentDate={currentDate}
         setCurrentDate={setCurrentDate}
+        onOpenQuickCheck={handleOpenQuickCheck}
       />
 
       {/* 오른쪽: 통계 및 담벼락 */}
@@ -113,6 +131,15 @@ export default function App() {
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+      />
+
+      {/* 빠른 출석 체크 모달 */}
+      <QuickCheck
+        isOpen={isQuickCheckOpen}
+        onClose={() => setIsQuickCheckOpen(false)}
+        onRefreshAttendance={refreshAttendance}
+        attendanceList={attendanceList}
+        initialDateStr={quickCheckDateStr}
       />
     </div>
   );

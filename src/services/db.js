@@ -44,65 +44,68 @@ const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 export const auth = isFirebaseConfigured ? getAuth(app) : null;
 export const db = isFirebaseConfigured ? getFirestore(app) : null;
 
+// 공식 등록 회원 26명 명단
+export const OFFICIAL_MEMBERS = [
+  '강승국', '강현동', '고서희', '김도현', '김문호', '김민회', '김성수', '김용범',
+  '김주희', '김현수', '김회영', '박주현', '변란희', '변태식', '심영면', '안병림',
+  '오세영', '유재준', '이병호', '이성대', '이승우', '이재욱', '이주엽', '이혜인',
+  '조성복', '조현정'
+];
+
 // ==========================================
 // MOCK & LOCAL STORAGE 데이터베이스 도우미
 // ==========================================
-const MOCK_USERS_KEY = 'badminton_users';
+const MOCK_USERS_KEY = 'badminton_users_v3';
 const MOCK_ATTENDANCE_KEY = 'badminton_attendance';
 const MOCK_MESSAGES_KEY = 'badminton_messages';
 const CURRENT_USER_KEY = 'badminton_current_user';
 
-// 가상 데모용 데이터 초기 시딩
+// 공식 데이터 시딩
 const seedMockData = () => {
-  if (!localStorage.getItem(MOCK_USERS_KEY)) {
-    const mockUsers = [
-      { id: 'user-admin', email: 'admin@admin.com', name: '최고 관리자', password: import.meta.env.VITE_ADMIN_PASSWORD || '2026', isAdmin: true },
-      { id: 'user-dohyun', email: 'dohyun@badminton.com', name: '미스터 도현', password: 'password123' },
-      { id: 'user-minsu', email: 'minsu@badminton.com', name: '김민수', password: 'password123' },
-      { id: 'user-suji', email: 'suji@badminton.com', name: '이수지', password: 'password123' },
-      { id: 'user-jieun', email: 'jieun@badminton.com', name: '박지은', password: 'password123' },
-    ];
-    localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(mockUsers));
+  let users = [];
+  const stored = localStorage.getItem(MOCK_USERS_KEY);
+  if (stored) {
+    try {
+      users = JSON.parse(stored);
+    } catch (e) {
+      users = [];
+    }
   }
 
-  if (!localStorage.getItem(MOCK_ATTENDANCE_KEY)) {
-    const today = new Date();
-    const formatDate = (offsetDays) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() + offsetDays);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
+  // 관리자 계정 보장
+  if (!users.some(u => u.isAdmin || u.email === 'admin@admin.com')) {
+    users.push({
+      id: 'user-admin',
+      email: 'admin@admin.com',
+      name: '최고 관리자',
+      password: import.meta.env.VITE_ADMIN_PASSWORD || '2026',
+      isAdmin: true
+    });
+  }
 
-    const mockAttendance = [
-      { id: 'att-1', user_id: 'user-dohyun', user_name: '미스터 도현', attendance_date: formatDate(0) },
-      { id: 'att-2', user_id: 'user-minsu', user_name: '김민수', attendance_date: formatDate(0) },
-      { id: 'att-3', user_id: 'user-suji', user_name: '이수지', attendance_date: formatDate(0) },
-      { id: 'att-4', user_id: 'user-dohyun', user_name: '미스터 도현', attendance_date: formatDate(1) },
-      { id: 'att-5', user_id: 'user-jieun', user_name: '박지은', attendance_date: formatDate(1) },
-      { id: 'att-6', user_id: 'user-minsu', user_name: '김민수', attendance_date: formatDate(2) },
-      { id: 'att-past1', user_id: 'user-dohyun', user_name: '미스터 도현', attendance_date: formatDate(-1) },
-      { id: 'att-past2', user_id: 'user-minsu', user_name: '김민수', attendance_date: formatDate(-1) },
-      { id: 'att-past3', user_id: 'user-suji', user_name: '이수지', attendance_date: formatDate(-2) },
-      { id: 'att-past4', user_id: 'user-dohyun', user_name: '미스터 도현', attendance_date: formatDate(-3) },
-    ];
-    localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify(mockAttendance));
+  // 공식 회원 26명 등록 보장
+  OFFICIAL_MEMBERS.forEach((name, idx) => {
+    if (!users.some(u => u.name === name)) {
+      users.push({
+        id: `user-member-${idx + 1}`,
+        email: '',
+        name: name,
+        password: 'password123',
+        isAdmin: false
+      });
+    }
+  });
+
+  localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
+
+  if (!localStorage.getItem(MOCK_ATTENDANCE_KEY)) {
+    localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify([]));
   }
 
   if (!localStorage.getItem(MOCK_MESSAGES_KEY)) {
-    const getTodayStr = () => {
-      const d = new Date();
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-    const today = getTodayStr();
+    const today = new Date().toISOString().split('T')[0];
     const mockMessages = [
-      { id: 'msg-1', user_id: 'user-minsu', user_name: '김민수', message_date: today, message_text: '오늘 컨디션 최상입니다! 다들 코트에서 뵙죠 🏸', created_at: new Date().toISOString() },
-      { id: 'msg-2', user_id: 'user-suji', user_name: '이수지', message_date: today, message_text: '새 라켓 들고 갑니다. 기대되네요!', created_at: new Date().toISOString() },
+      { id: 'msg-1', user_id: 'user-admin', user_name: '관리자', message_date: today, message_text: '배드민턴 클럽 출석부에 오신 것을 환영합니다! 🏸', created_at: new Date().toISOString() },
     ];
     localStorage.setItem(MOCK_MESSAGES_KEY, JSON.stringify(mockMessages));
   }
@@ -433,27 +436,44 @@ export const dbService = {
   async getAllUsers() {
     if (isFirebaseConfigured) {
       try {
-        const querySnapshot = await getDocs(collection(db, 'users'));
-        const users = [];
-        querySnapshot.forEach((doc) => {
-          users.push(doc.data());
+        // 1. Firestore users 컬렉션에서 가입한 회원 목록 조회
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const userMap = {};
+        usersSnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const uid = data.id || docSnap.id;
+          const userName = data.name || data.displayName || data.userName || (data.email ? data.email.split('@')[0] : '');
+          if (uid && userName) {
+            userMap[uid] = {
+              id: uid,
+              email: data.email || '',
+              name: userName.trim(),
+              isAdmin: Boolean(data.isAdmin || (data.email && data.email.toLowerCase() === 'admin@admin.com')),
+            };
+          }
         });
-        
-        // 만약 users가 비어있을 경우 (기존 가입한 유저들이 users에 기록이 안 되었을 시)
-        // 출석부 목록에서 고유 사용자를 추출하여 폴백 데이터로 활용
-        if (users.length === 0) {
-          const attendanceRef = collection(db, 'attendance');
-          const attSnapshot = await getDocs(attendanceRef);
-          const userMap = {};
-          attSnapshot.forEach((doc) => {
-            const data = doc.data();
-            if (data.user_id && data.user_name) {
-              userMap[data.user_id] = { id: data.user_id, name: data.user_name };
+
+        // 2. 출석 기록(attendance)에서도 보완 — users 컬렉션에 누락된 회원 포함
+        try {
+          const attSnapshot = await getDocs(collection(db, 'attendance'));
+          attSnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const uid = data.user_id;
+            const userName = data.user_name;
+            if (uid && userName && !userMap[uid]) {
+              userMap[uid] = {
+                id: uid,
+                name: userName.trim(),
+                email: data.user_email || '',
+                isAdmin: false,
+              };
             }
           });
-          return Object.values(userMap);
+        } catch (attErr) {
+          console.warn('출석 기록에서 회원 보완 중 알림:', attErr);
         }
-        return users;
+
+        return Object.values(userMap);
       } catch (err) {
         console.error('회원 목록 조회 실패:', err);
         return [];
@@ -527,6 +547,142 @@ export const dbService = {
       }
     } catch (e) {
       console.error('관리자 출석 이름 일괄 수정 실패:', e);
+    }
+  },
+
+  // 관리자 전용: 새 회원(이름) 추가
+  async addUser(name, email = '') {
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new Error('회원 이름을 입력해 주세요.');
+
+    if (isFirebaseConfigured) {
+      const newId = `user-${Date.now()}`;
+      const userDocRef = doc(db, 'users', newId);
+      const newUserData = {
+        id: newId,
+        name: trimmedName,
+        email: email.trim(),
+        created_at: new Date().toISOString()
+      };
+      await setDoc(userDocRef, newUserData);
+      return newUserData;
+    } else {
+      const users = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
+      if (users.some(u => u.name === trimmedName)) {
+        throw new Error(`이미 "${trimmedName}" 회원이 등록되어 있습니다.`);
+      }
+      const newId = `user-member-${Date.now()}`;
+      const newUser = {
+        id: newId,
+        name: trimmedName,
+        email: email.trim(),
+        password: 'password123',
+        isAdmin: false
+      };
+      users.push(newUser);
+      localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
+      return newUser;
+    }
+  },
+
+  // 관리자 전용: 회원 이름 변경 (출석 데이터도 동기화)
+  async updateUserName(targetUser, newName) {
+    const trimmedName = newName.trim();
+    if (!trimmedName) throw new Error('새 이름을 입력해 주세요.');
+    const userId = targetUser.id;
+
+    if (isFirebaseConfigured) {
+      // 1. users 컬렉션 업데이트
+      const userDocRef = doc(db, 'users', userId);
+      await setDoc(userDocRef, { name: trimmedName }, { merge: true });
+
+      // 2. attendance 기록 일괄 업데이트
+      const attendanceRef = collection(db, 'attendance');
+      const q = query(attendanceRef, where('user_id', '==', userId));
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      querySnapshot.forEach((docSnap) => {
+        batch.update(docSnap.ref, { user_name: trimmedName });
+      });
+      await batch.commit();
+    } else {
+      // 1. MOCK_USERS 업데이트
+      const users = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
+      const user = users.find(u => u.id === userId);
+      if (user) {
+        user.name = trimmedName;
+        localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
+      }
+
+      // 2. MOCK_ATTENDANCE 업데이트
+      const allAttendance = JSON.parse(localStorage.getItem(MOCK_ATTENDANCE_KEY) || '[]');
+      allAttendance.forEach(a => {
+        if (a.user_id === userId) {
+          a.user_name = trimmedName;
+        }
+      });
+      localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify(allAttendance));
+    }
+  },
+
+  // 관리자 전용: 회원 삭제
+  async deleteUser(userId) {
+    if (!userId) return;
+
+    if (isFirebaseConfigured) {
+      const userDocRef = doc(db, 'users', userId);
+      await deleteDoc(userDocRef);
+    } else {
+      const users = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
+      const filtered = users.filter(u => u.id !== userId);
+      localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(filtered));
+    }
+  },
+
+  // 클럽 대표 배너 사진 조회
+  async getClubBanner() {
+    if (isFirebaseConfigured) {
+      try {
+        const settingsDoc = await getDoc(doc(db, 'settings', 'club'));
+        if (settingsDoc.exists() && settingsDoc.data().banner_image) {
+          return settingsDoc.data().banner_image;
+        }
+      } catch (err) {
+        console.warn('Firebase 배너 조회 실패, 로컬 스토리지 확인:', err);
+      }
+    }
+    return localStorage.getItem('badminton_club_banner') || null;
+  },
+
+  // 관리자 전용: 클럽 대표 배너 사진 저장 (Base64 이미지)
+  async updateClubBanner(imageDataUrl) {
+    if (!imageDataUrl) return;
+    localStorage.setItem('badminton_club_banner', imageDataUrl);
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, 'settings', 'club'), {
+          banner_image: imageDataUrl,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error('Firebase 배너 저장 실패:', err);
+      }
+    }
+    return imageDataUrl;
+  },
+
+  // 관리자 전용: 클럽 대표 배너 사진 초기화 (기본 사진으로 복원)
+  async resetClubBanner() {
+    localStorage.removeItem('badminton_club_banner');
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, 'settings', 'club'), {
+          banner_image: null,
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error('Firebase 배너 초기화 실패:', err);
+      }
     }
   }
 };

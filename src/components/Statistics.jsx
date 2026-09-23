@@ -75,6 +75,15 @@ export default function Statistics({ currentUser, attendanceList, currentDate })
       }).length
     : 0;
 
+  // 로그인 유저의 올해 누적 출석 횟수
+  const myYearCount = currentUser
+    ? attendanceList.filter((a) => {
+        const parts = a.attendance_date.split('-');
+        return a.user_id === currentUser.id &&
+               parseInt(parts[0], 10) === currentYear;
+      }).length
+    : 0;
+
   return (
     <div className="glass-panel">
       <h2 className="section-title">
@@ -83,21 +92,102 @@ export default function Statistics({ currentUser, attendanceList, currentDate })
       </h2>
 
       <div className="stats-grid">
-        {/* 나의 출석 횟수 (가로/세로 중앙 정렬) */}
+        {/* 나의 출석 횟수 (가독성 최적화 & 줄바꿈 방지) */}
         <div className="stats-my-box">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
-            <Flame size={20} style={{ color: 'var(--accent-neon)' }} />
-            <span className="stats-my-title">나의 이번 달 출석</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center', marginBottom: '8px' }}>
+            <Flame size={18} style={{ color: 'var(--accent-neon)', flexShrink: 0 }} />
+            <span className="stats-my-title" style={{ whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>나의 출석 현황</span>
           </div>
-          <div className="stats-my-count">{myCount}</div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '8px',
+            width: '100%',
+            margin: '6px 0 10px'
+          }}>
+            {/* 이번 달 */}
+            <div style={{
+              background: 'rgba(5, 150, 105, 0.06)',
+              border: '1px solid rgba(5, 150, 105, 0.15)',
+              borderRadius: '12px',
+              padding: '10px 6px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <span style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary)',
+                whiteSpace: 'nowrap',
+                wordBreak: 'keep-all',
+                fontWeight: 600,
+                marginBottom: '4px'
+              }}>
+                이번 달
+              </span>
+              <span style={{
+                fontSize: '1.45rem',
+                fontWeight: 850,
+                color: 'var(--accent-neon)',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.1,
+                fontFamily: 'var(--font-title)'
+              }}>
+                {myCount}<span style={{ fontSize: '0.85rem', fontWeight: 600, marginLeft: '2px' }}>회</span>
+              </span>
+            </div>
+
+            {/* 올해 누적 */}
+            <div style={{
+              background: 'rgba(37, 99, 235, 0.06)',
+              border: '1px solid rgba(37, 99, 235, 0.15)',
+              borderRadius: '12px',
+              padding: '10px 6px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <span style={{
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary)',
+                whiteSpace: 'nowrap',
+                wordBreak: 'keep-all',
+                fontWeight: 600,
+                marginBottom: '4px'
+              }}>
+                올해 누적
+              </span>
+              <span style={{
+                fontSize: '1.45rem',
+                fontWeight: 850,
+                color: 'var(--accent-blue)',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.1,
+                fontFamily: 'var(--font-title)'
+              }}>
+                {myYearCount}<span style={{ fontSize: '0.85rem', fontWeight: 600, marginLeft: '2px' }}>회</span>
+              </span>
+            </div>
+          </div>
+
+          <span style={{
+            fontSize: '0.78rem',
+            color: 'var(--text-secondary)',
+            fontWeight: 500,
+            whiteSpace: 'nowrap',
+            wordBreak: 'keep-all',
+            display: 'block'
+          }}>
             {currentUser ? `${currentUser.name}님의 기록` : '로그인 해주세요'}
           </span>
         </div>
 
         {/* 출석 왕 랭킹 (가독성 개편 리스트) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <span className="stats-my-title" style={{ display: 'block', marginBottom: '4px' }}>
+          <span className="stats-my-title" style={{ display: 'block', marginBottom: '4px', whiteSpace: 'nowrap', wordBreak: 'keep-all' }}>
             🏆 {currentMonth}월 출석왕 랭킹
           </span>
           
