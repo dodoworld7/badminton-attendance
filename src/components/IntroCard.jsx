@@ -6,84 +6,13 @@ import {
 import defaultBannerPhoto from '../assets/banner_photo.jpg';
 import { dbService, isFirebaseConfigured } from '../services/db';
 
-export default function IntroCard({ currentUser, onOpenLogin, onLogout, onOpenQuickCheck }) {
+export default function IntroCard({ currentUser, onOpenLogin, onLogout, onOpenQuickCheck, clubBanner }) {
   const isAdmin = currentUser && (
     currentUser.isAdmin === true || 
     (currentUser.email && currentUser.email.toLowerCase() === 'admin@admin.com')
   );
 
-  const [bannerSrc, setBannerSrc] = useState(defaultBannerPhoto);
-  const [isCustomPhoto, setIsCustomPhoto] = useState(false);
-  const fileInputRef = useRef(null);
-
-  // 저장된 클럽 대표 사진 불러오기
-  useEffect(() => {
-    const loadBanner = async () => {
-      try {
-        const savedBanner = await dbService.getClubBanner();
-        if (savedBanner) {
-          setBannerSrc(savedBanner);
-          setIsCustomPhoto(true);
-        }
-      } catch (err) {
-        console.error('대표 사진 로드 실패:', err);
-      }
-    };
-    loadBanner();
-  }, []);
-
-  // 사진 업로드 핸들러
-  const handleImageChange = (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-
-    // 5MB 용량 제한 검사
-    if (file.size > 5 * 1024 * 1024) {
-      alert('사진 용량은 5MB 이하로 등록해 주세요.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target.result;
-      setBannerSrc(dataUrl);
-      setIsCustomPhoto(true);
-      try {
-        await dbService.updateClubBanner(dataUrl);
-        alert('클럽 대표 사진이 성공적으로 등록되었습니다! 🏸');
-      } catch (err) {
-        alert('사진 저장 중 오류가 발생했습니다.');
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // 사진 기본값 복원 핸들러
-  const handleResetPhoto = async () => {
-    if (confirm('기본 체육관 사진으로 복원하시겠습니까?')) {
-      try {
-        await dbService.resetClubBanner();
-        setBannerSrc(defaultBannerPhoto);
-        setIsCustomPhoto(false);
-        alert('기본 사진으로 복원되었습니다.');
-      } catch (err) {
-        alert('사진 복원 중 오류가 발생했습니다.');
-      }
-    }
-  };
-
-  // 사진 변경 버튼 클릭 시 관리자 권한 체크
-  const handlePhotoClick = () => {
-    if (isAdmin) {
-      if (fileInputRef.current) {
-        fileInputRef.current.click();
-      }
-    } else {
-      if (confirm('클럽 대표 사진 변경은 관리자 권한이 필요합니다.\n관리자로 로그인하시겠습니까?')) {
-        onOpenLogin();
-      }
-    }
-  };
+  const bannerSrc = clubBanner || defaultBannerPhoto;
 
   return (
     <div className="glass-panel active-glow full-width-header" style={{ position: 'relative', overflow: 'hidden' }}>
@@ -120,7 +49,7 @@ export default function IntroCard({ currentUser, onOpenLogin, onLogout, onOpenQu
       </div>
 
       <div className="intro-banner">
-        {/* 📷 배너 사진 영역 (실제 사진 표시 & 관리자 사진 업로드 지원) */}
+        {/* 📷 배너 사진 영역 */}
         <div 
           className="intro-image-container"
           style={{
@@ -161,68 +90,6 @@ export default function IntroCard({ currentUser, onOpenLogin, onLogout, onOpenQu
           }}>
             <span>🏸 백석클럽</span>
           </div>
-
-          {/* 사진 변경 버튼 (관리자 로그인 시 강조, 비로그인 시에도 안내 가능) */}
-          <div style={{
-            position: 'absolute',
-            bottom: '8px',
-            right: '8px',
-            display: 'flex',
-            gap: '4px'
-          }}>
-            <button
-              onClick={handlePhotoClick}
-              title={isAdmin ? '클럽 대표 사진 변경 (PC/모바일 사진 업로드)' : '관리자 로그인 후 사진 변경 가능'}
-              style={{
-                background: 'rgba(0, 0, 0, 0.75)',
-                backdropFilter: 'blur(6px)',
-                color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                padding: '4px 8px',
-                borderRadius: '8px',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Camera size={13} style={{ color: '#f59e0b' }} />
-              <span>사진 변경</span>
-            </button>
-
-            {isAdmin && isCustomPhoto && (
-              <button
-                onClick={handleResetPhoto}
-                title="기본 사진으로 복원"
-                style={{
-                  background: 'rgba(0, 0, 0, 0.75)',
-                  backdropFilter: 'blur(6px)',
-                  color: '#e2e8f0',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  padding: '4px 6px',
-                  borderRadius: '8px',
-                  fontSize: '0.72rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center'
-                }}
-              >
-                <RotateCcw size={12} />
-              </button>
-            )}
-          </div>
-
-          {/* 숨겨진 파일 선택 인풋 */}
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            accept="image/*" 
-            onChange={handleImageChange} 
-            style={{ display: 'none' }} 
-          />
         </div>
 
         {/* 📝 소개 및 클럽 안내 정보 */}

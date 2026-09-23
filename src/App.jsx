@@ -23,6 +23,7 @@ export default function App() {
   const [selectedDateStr, setSelectedDateStr] = useState(getTodayStr());
   const [quickCheckDateStr, setQuickCheckDateStr] = useState(getTodayStr());
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [clubBanner, setClubBanner] = useState(null);
 
   const handleOpenQuickCheck = (targetDateStr) => {
     if (targetDateStr) {
@@ -30,6 +31,19 @@ export default function App() {
     }
     setIsQuickCheckOpen(true);
   };
+
+  // 클럽 대표 배너 사진 초기 로드
+  useEffect(() => {
+    const loadBanner = async () => {
+      try {
+        const saved = await dbService.getClubBanner();
+        if (saved) setClubBanner(saved);
+      } catch (err) {
+        console.error('배너 로드 실패:', err);
+      }
+    };
+    loadBanner();
+  }, []);
 
   // 페이지 로드 시 로그인 세션 확인 및 출석 정보 로드
   useEffect(() => {
@@ -94,12 +108,15 @@ export default function App() {
         onLogout={handleLogout}
         isFirebaseConfigured={isFirebaseConfigured}
         onOpenQuickCheck={() => handleOpenQuickCheck(selectedDateStr)}
+        clubBanner={clubBanner}
       />
 
       {/* 관리자 전용 회원 관리 패널 (관리자 로그인 시 노출) */}
       <AdminPanel
         currentUser={currentUser}
         onRefreshAttendance={refreshAttendance}
+        currentBanner={clubBanner}
+        onBannerChange={(newBanner) => setClubBanner(newBanner)}
       />
 
       {/* 왼쪽: 메인 달력 */}
