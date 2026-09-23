@@ -174,15 +174,13 @@ export const dbService = {
       };
       if (user.email && user.email.toLowerCase() === 'admin@admin.com') {
         user.isAdmin = true;
-        user.name = '관리자';
+        user.name = '최고 관리자';
         try {
-          await updateProfile(userCredential.user, { displayName: '관리자' });
+          await updateProfile(userCredential.user, { displayName: '최고 관리자' });
           const userDocRef = doc(db, 'users', userCredential.user.uid);
-          await setDoc(userDocRef, { name: '관리자' }, { merge: true });
-          // 기존 출석 데이터의 user_name도 '관리자'로 일괄 동기화
-          this.fixAdminAttendanceNames(user.id);
+          await setDoc(userDocRef, { name: '최고 관리자' }, { merge: true });
         } catch (e) {
-          console.error('관리자 이름 동기화 실패:', e);
+          console.error('최고 관리자 프로필 업데이트 실패:', e);
         }
       }
       this.saveLocalSession(user);
@@ -195,7 +193,7 @@ export const dbService = {
         const adminUser = {
           id: 'user-admin',
           email: 'admin@admin.com',
-          name: '관리자',
+          name: '최고 관리자',
           isAdmin: true
         };
         this.saveLocalSession(adminUser);
@@ -243,13 +241,12 @@ export const dbService = {
             };
             if (user.email && user.email.toLowerCase() === 'admin@admin.com') {
               userData.isAdmin = true;
-              userData.name = '관리자';
-              if (user.displayName !== '관리자') {
-                updateProfile(user, { displayName: '관리자' }).catch(console.error);
+              userData.name = '최고 관리자';
+              if (user.displayName !== '최고 관리자') {
+                updateProfile(user, { displayName: '최고 관리자' }).catch(console.error);
               }
               const userDocRef = doc(db, 'users', user.uid);
-              setDoc(userDocRef, { name: '관리자' }, { merge: true }).catch(console.error);
-              this.fixAdminAttendanceNames(user.uid);
+              setDoc(userDocRef, { name: '최고 관리자' }, { merge: true }).catch(console.error);
             }
             this.saveLocalSession(userData);
             resolve(userData);
@@ -533,7 +530,7 @@ export const dbService = {
           const data = docSnap.data();
           const uid = data.user_id;
           const userName = data.user_name;
-          if (uid && userName && userName !== '관리자' && !userMap[userName.trim()]) {
+          if (uid && userName && userName !== '관리자' && userName !== '최고 관리자' && !userMap[userName.trim()]) {
             userMap[userName.trim()] = {
               id: uid,
               name: userName.trim(),
@@ -547,7 +544,20 @@ export const dbService = {
       }
     }
 
-    return Object.values(userMap);
+    // '최고 관리자' 1개 보장
+    if (!userMap['최고 관리자']) {
+      userMap['최고 관리자'] = {
+        id: 'user-admin',
+        name: '최고 관리자',
+        email: 'admin@admin.com',
+        isAdmin: true
+      };
+    }
+
+    // 도현님 요청: '관리자' 계정은 완전히 삭제하고 '최고 관리자'만 유지
+    delete userMap['관리자'];
+
+    return Object.values(userMap).filter(u => u.name && u.name !== '관리자');
   },
 
   async changeAttendanceDate(attendanceId, newDateString) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   X, Zap, CheckCircle2, Circle, Users, RefreshCw, Search, 
   ShieldAlert, Shield, Calendar as CalendarIcon, ChevronLeft, ChevronRight,
-  Sparkles, RotateCcw
+  Sparkles, RotateCcw, Lock
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { isClubOperatingDay, isRedDay, isBlueDay, getHolidayName, isHoliday } from '../utils/holidays';
@@ -104,7 +104,8 @@ export default function QuickCheck({
   onClose, 
   onRefreshAttendance, 
   attendanceList,
-  initialDateStr 
+  initialDateStr,
+  currentUser
 }) {
   const todayStr = getTodayStr();
   const defaultDate = initialDateStr || getDefaultOperatingDate(todayStr);
@@ -114,6 +115,12 @@ export default function QuickCheck({
   const [toggling, setToggling] = useState(null); // 처리 중인 userId
   const [errorMsg, setErrorMsg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // 현재 로그인한 사용자가 관리자인지 여부 확인
+  const isAdmin = currentUser && (
+    currentUser.isAdmin === true || 
+    (currentUser.email && currentUser.email.toLowerCase() === 'admin@admin.com')
+  );
 
   // 현재 선택된 날짜가 속한 주의 7일간 날짜들 (상단 날짜가 바뀌면 자동으로 그 주의 날짜들로 갱신)
   const currentWeekDays = useMemo(() => {
@@ -152,8 +159,9 @@ export default function QuickCheck({
     setErrorMsg('');
     try {
       const allUsers = await dbService.getAllUsers();
-      // 이름 가나다 순 정렬
-      const sorted = [...allUsers].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+      // '관리자'는 삭제하고 가나다 순 정렬
+      const cleanUsers = allUsers.filter(u => u.name && u.name !== '관리자');
+      const sorted = [...cleanUsers].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       setUsers(sorted);
     } catch (err) {
       console.error('회원 목록 로드 실패:', err);
@@ -193,6 +201,13 @@ export default function QuickCheck({
       return;
     }
 
+    // 도현님 요청: 최고 관리자는 admin@admin.com 계정으로 로그인했을 때만 선택 가능!
+    const isSuperAdminCard = user.name === '최고 관리자' || user.name === '최고관리자' || (user.email && user.email.toLowerCase() === 'admin@admin.com');
+    if (isSuperAdminCard && !isAdmin) {
+      setErrorMsg('🔒 최고 관리자는 admin@admin.com 계정으로 로그인했을 때만 출석을 선택할 수 있습니다.');
+      return;
+    }
+
     setToggling(user.id);
     setErrorMsg('');
     try {
@@ -216,11 +231,13 @@ export default function QuickCheck({
 
   const attendedCount = attendedIds.size;
 
-  // 검색어 필터링
-  const filteredUsers = users.filter((u) => 
-    (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // 검색어 필터링 ('관리자'는 무조건 삭제/제외)
+  const filteredUsers = users
+    .filter((u) => u.name && u.name !== '관리자')
+    .filter((u) => 
+      (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
 
   // 날짜 텍스트 컬러 (빨간날/파란날)
   const isRed = isRedDay(selectedDateStr);
@@ -784,13 +801,21 @@ export default function QuickCheck({
               {filteredUsers.map((user) => {
                 const attended = attendedIds.has(user.id);
                 const isProcessing = toggling === user.id;
+                const isSuperAdminCard = user.name === '최고 관리자' || user.name === '최고관리자' || (user.email && user.email.toLowerCase() === 'admin@admin.com');
+                const isLocked = isSuperAdminCard && !isAdmin;
 
                 return (
                   <button
                     key={user.id}
                     onClick={() => handleToggle(user)}
-                    disabled={!!toggling || !isOperating}
-                    title={!isOperating ? '평일은 출석 체크가 제한됩니다' : `${user.name} 출석 토글`}
+                    disabled={!!toggling || !isOperating || isLocked}
+                    title={
+                      isLocked
+                        ? '최고 관리자는 admin@admin.com 로그인 시에만 선택 가능합니다.'
+                        : !isOperating
+                        ? '평일은 출석 체크가 제한됩니다'
+                        : `${user.name} 출석 토글`
+                    }
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -802,15 +827,19 @@ export default function QuickCheck({
                       borderRadius: '12px',
                       border: attended
                         ? '2px solid #10b981'
+                        : isLocked
+                        ? '1.5px dashed #cbd5e1'
                         : '1px solid var(--glass-border, rgba(0,0,0,0.1))',
                       background: attended
                         ? 'rgba(16,185,129,0.12)'
+                        : isLocked
+                        ? 'rgba(0,0,0,0.02)'
                         : !isOperating
                         ? 'rgba(0,0,0,0.02)'
                         : 'var(--surface-color, #ffffff)',
-                      cursor: !isOperating ? 'not-allowed' : 'pointer',
+                      cursor: isLocked ? 'not-allowed' : (!isOperating ? 'not-allowed' : 'pointer'),
                       transition: 'all 0.1s ease',
-                      opacity: isProcessing ? 0.6 : (!isOperating ? 0.55 : 1),
+                      opacity: isProcessing ? 0.6 : isLocked ? 0.6 : (!isOperating ? 0.55 : 1),
                       boxShadow: attended 
                         ? '0 3px 10px rgba(16,185,129,0.2)' 
                         : '0 1px 3px rgba(0,0,0,0.03)',
@@ -819,7 +848,20 @@ export default function QuickCheck({
                   >
                     {/* 상태 아이콘 */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {attended ? (
+                      {isLocked ? (
+                        <div style={{
+                          background: 'rgba(139,92,246,0.12)',
+                          borderRadius: '50%',
+                          width: '24px',
+                          height: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#8b5cf6'
+                        }}>
+                          <Lock size={13} />
+                        </div>
+                      ) : attended ? (
                         <CheckCircle2 size={20} style={{ color: '#10b981' }} />
                       ) : (
                         <Circle size={20} style={{ color: 'var(--text-secondary, #cbd5e1)' }} />
@@ -829,8 +871,8 @@ export default function QuickCheck({
                     {/* 회원 이름 (가독성 최고로 큼직하고 뚜렷하게) */}
                     <div style={{
                       fontWeight: 800,
-                      fontSize: '0.98rem',
-                      color: attended ? '#059669' : 'var(--text-primary, #1e293b)',
+                      fontSize: '0.96rem',
+                      color: attended ? '#059669' : isLocked ? '#64748b' : 'var(--text-primary, #1e293b)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '3px',
@@ -846,13 +888,13 @@ export default function QuickCheck({
                     <div style={{
                       fontSize: '0.66rem',
                       fontWeight: 700,
-                      color: attended ? '#059669' : 'var(--text-secondary, #94a3b8)',
-                      background: attended ? 'rgba(16,185,129,0.18)' : 'rgba(0,0,0,0.04)',
+                      color: isLocked ? '#8b5cf6' : attended ? '#059669' : 'var(--text-secondary, #94a3b8)',
+                      background: isLocked ? 'rgba(139,92,246,0.1)' : attended ? 'rgba(16,185,129,0.18)' : 'rgba(0,0,0,0.04)',
                       padding: '1px 6px',
                       borderRadius: '8px',
                       lineHeight: 1.2
                     }}>
-                      {isProcessing ? '처리 중' : attended ? '✓ 출석 완료' : '미출석'}
+                      {isProcessing ? '처리 중' : isLocked ? '🔒 로그인 필요' : attended ? '✓ 출석 완료' : '미출석'}
                     </div>
                   </button>
                 );

@@ -168,6 +168,7 @@ export default function App() {
         onRefreshAttendance={refreshAttendance}
         attendanceList={attendanceList}
         initialDateStr={quickCheckDateStr}
+        currentUser={currentUser}
       />
     </div>
   );
