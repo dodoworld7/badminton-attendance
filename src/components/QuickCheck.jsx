@@ -188,7 +188,12 @@ export default function QuickCheck({
       await onRefreshAttendance();
     } catch (err) {
       console.error('출석 토글 실패:', err);
-      setErrorMsg(`${user.name}님 출석 처리 중 오류가 발생했습니다.`);
+      const isPermission = err.code === 'permission-denied' || (err.message && err.message.includes('permission'));
+      if (isPermission) {
+        setErrorMsg(`⚠️ Firebase Firestore 보안 규칙 권한 오류: 비로그인 쓰기 권한이 Firebase 콘솔에서 아직 허용되지 않았습니다. (규칙 업데이트 필요)`);
+      } else {
+        setErrorMsg(`${user.name}님 출석 처리 중 오류: ${err.message || '네트워크 오류가 발생했습니다.'}`);
+      }
     } finally {
       setToggling(null);
     }

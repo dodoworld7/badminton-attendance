@@ -326,40 +326,69 @@ export const dbService = {
   async toggleAttendance(dateString, isAttending, user) {
     if (!user) throw new Error('회원 정보를 찾을 수 없습니다.');
 
-    if (isFirebaseConfigured) {
-      // 중복 체크 방지 및 심플한 삭제를 위해 문서 ID 형식을 '유저ID_날짜'로 고정
+    if (isFirebaseConfigured && db) {
       const docId = `${user.id}_${dateString}`;
       const docRef = doc(db, 'attendance', docId);
 
       if (isAttending) {
+        // 출석 등록: 지정된 docId로 저장
         await setDoc(docRef, {
           user_id: user.id,
           user_name: user.name,
           attendance_date: dateString,
           created_at: new Date().toISOString()
-        });
+        }, { merge: true });
       } else {
-        await deleteDoc(docRef);
+        // 출석 취소(수정): docId로 먼저 삭제
+        try {
+          await deleteDoc(docRef);
+        } catch (e) {
+          console.warn('docId 직접 삭제 시도 알림:', e);
+        }
+
+        // 기존에 다른 ID 형식으로 등록되어 있던 동일 회원·날짜의 출석 문서도 모두 찾아서 깔끔하게 삭제
+        try {
+          const q = query(
+            collection(db, 'attendance'),
+            where('attendance_date', '==', dateString)
+          );
+          const snaps = await getDocs(q);
+          const deletePromises = [];
+          snaps.forEach((docSnap) => {
+            const data = docSnap.data();
+            const isMatchUser = (data.user_id && data.user_id === user.id) ||
+                                (data.user_name && data.user_name.trim() === user.name.trim());
+            if (isMatchUser) {
+              deletePromises.push(deleteDoc(doc(db, 'attendance', docSnap.id)));
+            }
+          });
+          if (deletePromises.length > 0) {
+            await Promise.all(deletePromises);
+          }
+        } catch (queryErr) {
+          console.warn('기존 출석 문서 추가 검색 삭제 중 알림:', queryErr);
+        }
       }
     } else {
-      // LocalStorage
+      // LocalStorage 모드
       const allAttendance = JSON.parse(localStorage.getItem(MOCK_ATTENDANCE_KEY) || '[]');
       
       if (isAttending) {
-        if (allAttendance.some(a => a.user_id === user.id && a.attendance_date === dateString)) {
-          return;
+        if (!allAttendance.some(a => (a.user_id === user.id || a.user_name === user.name) && a.attendance_date === dateString)) {
+          allAttendance.push({
+            id: `att-${Date.now()}`,
+            user_id: user.id,
+            user_name: user.name,
+            attendance_date: dateString
+          });
         }
-        allAttendance.push({
-          id: `att-${Date.now()}`,
-          user_id: user.id,
-          user_name: user.name,
-          attendance_date: dateString
-        });
       } else {
-        const index = allAttendance.findIndex(a => a.user_id === user.id && a.attendance_date === dateString);
-        if (index > -1) {
-          allAttendance.splice(index, 1);
-        }
+        // 출석 취소: user_id 또는 user_name이 일치하는 항목 삭제
+        const filtered = allAttendance.filter(a => 
+          !( (a.user_id === user.id || a.user_name === user.name) && a.attendance_date === dateString )
+        );
+        localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify(filtered));
+        return;
       }
       localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify(allAttendance));
     }
