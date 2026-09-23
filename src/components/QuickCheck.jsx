@@ -77,6 +77,15 @@ const getWeekDaysForDate = (dateStr, todayStr) => {
   return weekList;
 };
 
+// 오늘이 평일(미운영일)인 경우, 빠른 출석 체크 모달을 열었을 때 바로 카드를 누를 수 있도록
+// 이번 주의 클럽 운영일(토·일·공휴일) 중 가장 가까운 날짜를 기본값으로 선택해 줍니다.
+const getDefaultOperatingDate = (todayStr) => {
+  if (isClubOperatingDay(todayStr)) return todayStr;
+  const week = getWeekDaysForDate(todayStr, todayStr);
+  const operatingDay = week.find((d) => d.isOperating);
+  return operatingDay ? operatingDay.dateStr : todayStr;
+};
+
 export default function QuickCheck({ 
   isOpen, 
   onClose, 
@@ -85,7 +94,8 @@ export default function QuickCheck({
   initialDateStr 
 }) {
   const todayStr = getTodayStr();
-  const [selectedDateStr, setSelectedDateStr] = useState(initialDateStr || todayStr);
+  const defaultDate = initialDateStr || getDefaultOperatingDate(todayStr);
+  const [selectedDateStr, setSelectedDateStr] = useState(defaultDate);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toggling, setToggling] = useState(null); // 처리 중인 userId
@@ -97,13 +107,13 @@ export default function QuickCheck({
     return getWeekDaysForDate(selectedDateStr, todayStr);
   }, [selectedDateStr, todayStr]);
 
-  // 모달이 열릴 때 initialDateStr가 주어졌거나 없으면 초기화
+  // 모달이 열릴 때 초기 날짜 설정
   useEffect(() => {
     if (isOpen) {
       if (initialDateStr) {
         setSelectedDateStr(initialDateStr);
       } else {
-        setSelectedDateStr(todayStr);
+        setSelectedDateStr(getDefaultOperatingDate(todayStr));
       }
       setSearchTerm('');
       setErrorMsg('');

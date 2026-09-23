@@ -213,32 +213,32 @@ export const dbService = {
   },
 
   async signOut() {
-    if (isFirebaseConfigured) {
-      await firebaseSignOut(auth);
-    } else {
+    try {
       localStorage.removeItem(CURRENT_USER_KEY);
+      sessionStorage.removeItem(CURRENT_USER_KEY);
+    } catch (e) {
+      console.warn('세션 삭제 오류:', e);
+    }
+
+    if (isFirebaseConfigured && auth) {
+      try {
+        await firebaseSignOut(auth);
+      } catch (err) {
+        console.error('Firebase signOut 실패:', err);
+      }
     }
   },
 
   async getCurrentUser() {
-    const localUserStr = localStorage.getItem(CURRENT_USER_KEY);
-    if (localUserStr) {
-      const localUser = JSON.parse(localUserStr);
-      if (localUser.email && localUser.email.toLowerCase() === 'admin@admin.com') {
-        localUser.name = '관리자';
-        return localUser;
-      }
-    }
-
-    if (isFirebaseConfigured) {
-      // Firebase Auth의 현재 로그인 관찰
+    if (isFirebaseConfigured && auth) {
+      // Firebase 모드: Firebase 인증 상태를 진실의 유일한 기준으로 삼음
       return new Promise((resolve) => {
         const unsubscribe = auth.onAuthStateChanged((user) => {
           unsubscribe();
           if (user) {
             const userData = {
               id: user.uid,
-              email: user.email,
+              email: user.email || '',
               name: user.displayName || '사용자'
             };
             if (user.email && user.email.toLowerCase() === 'admin@admin.com') {
@@ -249,22 +249,35 @@ export const dbService = {
               }
               const userDocRef = doc(db, 'users', user.uid);
               setDoc(userDocRef, { name: '관리자' }, { merge: true }).catch(console.error);
-              // 기존 출석 데이터의 user_name도 '관리자'로 일괄 동기화
               this.fixAdminAttendanceNames(user.uid);
             }
+            this.saveLocalSession(userData);
             resolve(userData);
           } else {
-            resolve(localUserStr ? JSON.parse(localUserStr) : null);
+            // Firebase에 로그인되어 있지 않으면 로컬 세션도 완전히 삭제하여 비로그인 게스트 상태 유지
+            try {
+              localStorage.removeItem(CURRENT_USER_KEY);
+              sessionStorage.removeItem(CURRENT_USER_KEY);
+            } catch (e) {}
+            resolve(null);
           }
         });
       });
     } else {
+      // 오프라인/로컬 Mock 모드: 사용자가 명시적으로 로그인했던 세션만 존중
+      const localUserStr = localStorage.getItem(CURRENT_USER_KEY);
       if (localUserStr) {
-        const user = JSON.parse(localUserStr);
-        if (user.email && user.email.toLowerCase() === 'admin@admin.com') {
-          user.name = '관리자';
+        try {
+          const user = JSON.parse(localUserStr);
+          if (user && user.email && user.email.toLowerCase() === 'admin@admin.com') {
+            user.isAdmin = true;
+            user.name = '관리자';
+          }
+          return user;
+        } catch (e) {
+          localStorage.removeItem(CURRENT_USER_KEY);
+          return null;
         }
-        return user;
       }
       return null;
     }

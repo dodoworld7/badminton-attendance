@@ -120,13 +120,15 @@ export default function App() {
         clubBanner={clubBanner}
       />
 
-      {/* 관리자 전용 회원 관리 패널 (관리자 로그인 시 노출) */}
-      <AdminPanel
-        currentUser={currentUser}
-        onRefreshAttendance={refreshAttendance}
-        currentBanner={clubBanner}
-        onBannerChange={(newBanner) => setClubBanner(newBanner)}
-      />
+      {/* 관리자 전용 회원 관리 패널 (admin@admin.com 로그인 시에만 노출) */}
+      {currentUser && (currentUser.isAdmin === true || (currentUser.email && currentUser.email.toLowerCase() === 'admin@admin.com')) && (
+        <AdminPanel
+          currentUser={currentUser}
+          onRefreshAttendance={refreshAttendance}
+          currentBanner={clubBanner}
+          onBannerChange={(newBanner) => setClubBanner(newBanner)}
+        />
+      )}
 
       {/* 왼쪽: 메인 달력 */}
       <Calendar
