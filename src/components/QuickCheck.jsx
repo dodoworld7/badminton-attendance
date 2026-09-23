@@ -27,6 +27,19 @@ const formatKoreanDate = (dateStr) => {
   return holidayName ? `${base} · ${holidayName}` : base;
 };
 
+// 모바일 화면용 컴팩트 날짜 (예: 9월 25일(금) · 추석)
+const formatCompactKoreanDate = (dateStr) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+  const holidayName = getHolidayName(dateStr);
+  const m = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  const base = `${m}월 ${day}일(${weekdays[d.getDay()]})`;
+  return holidayName ? `${base} · ${holidayName}` : base;
+};
+
 // 특정 날짜가 속한 주의 월요일부터 일요일까지 7일간의 날짜 목록 계산
 const getWeekDaysForDate = (dateStr, todayStr) => {
   if (!dateStr) return [];
@@ -221,12 +234,12 @@ export default function QuickCheck({
         position: 'fixed',
         inset: 0,
         background: 'rgba(0,0,0,0.65)',
-        backdropFilter: 'blur(6px)',
+        backdropFilter: 'blur(5px)',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px',
+        padding: '6px', // 모바일 여백 극소화
         animation: 'fadeIn 0.2s ease'
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -235,52 +248,63 @@ export default function QuickCheck({
         style={{
           background: 'var(--glass-bg, #ffffff)',
           border: '1px solid var(--glass-border, rgba(0,0,0,0.1))',
-          borderRadius: '24px',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.2), 0 0 0 1px rgba(245,158,11,0.2)',
+          borderRadius: '18px',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.22)',
           width: '100%',
-          maxWidth: '620px',
-          maxHeight: '92vh',
+          maxWidth: '560px',
+          height: '96vh', // 화면 높이 96%를 꽉 채워 회원 카드 영역 극대화
+          maxHeight: '96vh',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
           animation: 'slideUp 0.25s ease'
         }}
       >
-        {/* 모달 상단 헤더 */}
+        {/* 1. 모달 상단 헤더 (슬림 1줄 디자인) */}
         <div style={{
-          padding: '16px 22px 12px',
+          padding: '8px 12px',
           borderBottom: '1px solid var(--glass-border, rgba(0,0,0,0.08))',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '12px',
+          gap: '8px',
           background: 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(59,130,246,0.06) 100%)',
+          flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
             <div style={{
               background: '#f59e0b',
               color: '#ffffff',
-              borderRadius: '10px',
-              width: '32px',
-              height: '32px',
+              borderRadius: '8px',
+              width: '26px',
+              height: '26px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(245,158,11,0.4)'
+              flexShrink: 0,
+              boxShadow: '0 2px 6px rgba(245,158,11,0.4)'
             }}>
-              <Zap size={18} />
+              <Zap size={15} />
             </div>
-            <div>
-              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary, #1e293b)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
+              <span style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-primary, #1e293b)', whiteSpace: 'nowrap' }}>
                 빠른 출석 체크
-              </div>
-              <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary, #64748b)' }}>
-                토·일·공휴일만 출석 체크가 가능합니다. (로그인 불필요)
-              </div>
+              </span>
+              <span style={{
+                fontSize: '0.68rem',
+                color: '#059669',
+                background: 'rgba(16,185,129,0.15)',
+                padding: '1px 6px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                whiteSpace: 'nowrap'
+              }}>
+                로그인 불필요
+              </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             <button
               onClick={loadUsers}
               title="회원 목록 새로고침"
@@ -288,9 +312,9 @@ export default function QuickCheck({
               style={{
                 background: 'rgba(0,0,0,0.05)',
                 border: '1px solid var(--glass-border, rgba(0,0,0,0.1))',
-                borderRadius: '10px',
-                width: '34px',
-                height: '34px',
+                borderRadius: '8px',
+                width: '30px',
+                height: '30px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -298,16 +322,16 @@ export default function QuickCheck({
                 color: 'var(--text-secondary, #64748b)'
               }}
             >
-              <RefreshCw size={15} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+              <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
             </button>
             <button
               onClick={onClose}
               style={{
                 background: 'rgba(0,0,0,0.05)',
                 border: '1px solid var(--glass-border, rgba(0,0,0,0.1))',
-                borderRadius: '10px',
-                width: '34px',
-                height: '34px',
+                borderRadius: '8px',
+                width: '30px',
+                height: '30px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -321,69 +345,80 @@ export default function QuickCheck({
           </div>
         </div>
 
-        {/* 📅 날짜 선택 컨트롤 패널 */}
+        {/* 2. 📅 날짜 선택 컨트롤 패널 (컴팩트 & 꺾임 방지) */}
         <div style={{
-          padding: '12px 18px',
+          padding: '8px 12px',
           background: 'rgba(248, 250, 252, 0.95)',
           borderBottom: '1px solid var(--glass-border, rgba(0,0,0,0.08))',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px'
+          gap: '6px',
+          flexShrink: 0
         }}>
-          {/* 1행: 날짜 네비게이션 & 직접 선택 인풋 */}
+          {/* 1행: 이전 / 컴팩트 날짜 배지 / 다음 — 텍스트 절대 줄바꿈 안 되도록 보호 */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '8px'
+            gap: '6px',
+            width: '100%'
           }}>
             <button
               onClick={() => handleDateChangeBy(-1)}
               title="하루 전 날짜로 이동"
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '4px',
-                padding: '6px 12px',
-                borderRadius: '10px',
+                gap: '2px',
+                padding: '6px 8px',
+                minWidth: '54px',
+                flexShrink: 0,
+                borderRadius: '8px',
                 border: '1px solid var(--glass-border, rgba(0,0,0,0.12))',
                 background: '#ffffff',
                 cursor: 'pointer',
                 color: 'var(--text-primary, #334155)',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
               }}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={15} style={{ flexShrink: 0 }} />
               <span>이전</span>
             </button>
 
-            {/* 가운데 날짜 표시 + 달력 인풋 */}
+            {/* 가운데 날짜 표시 + 달력 인풋 (컴팩트 날짜 사용) */}
             <div style={{
+              flex: 1,
+              minWidth: 0,
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              justifyContent: 'center',
+              gap: '6px',
               background: '#ffffff',
-              padding: '6px 14px',
-              borderRadius: '12px',
+              padding: '6px 8px',
+              borderRadius: '10px',
               border: '1px solid var(--glass-border, rgba(0,0,0,0.15))',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-              position: 'relative'
+              boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+              position: 'relative',
+              overflow: 'hidden'
             }}>
-              <CalendarIcon size={17} style={{ color: dateColor, flexShrink: 0 }} />
+              <CalendarIcon size={15} style={{ color: dateColor, flexShrink: 0 }} />
               <span style={{
                 fontWeight: 800,
-                fontSize: '0.95rem',
+                fontSize: '0.88rem',
                 color: dateColor,
                 letterSpacing: '-0.3px',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }}>
-                {formatKoreanDate(selectedDateStr)}
+                {formatCompactKoreanDate(selectedDateStr)}
               </span>
 
-              {/* 브라우저 기본 달력 피커 (클릭 시 직접 원하는 날짜 선택) */}
+              {/* 달력 피커 인풋 */}
               <input
                 type="date"
                 value={selectedDateStr}
@@ -409,37 +444,40 @@ export default function QuickCheck({
               onClick={() => handleDateChangeBy(1)}
               title="다음 날짜로 이동"
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '4px',
-                padding: '6px 12px',
-                borderRadius: '10px',
+                gap: '2px',
+                padding: '6px 8px',
+                minWidth: '54px',
+                flexShrink: 0,
+                borderRadius: '8px',
                 border: '1px solid var(--glass-border, rgba(0,0,0,0.12))',
                 background: '#ffffff',
                 cursor: 'pointer',
                 color: 'var(--text-primary, #334155)',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
               }}
             >
               <span>다음</span>
-              <ChevronRight size={16} />
+              <ChevronRight size={15} style={{ flexShrink: 0 }} />
             </button>
           </div>
 
-          {/* 2행: 선택된 날짜가 속한 주간(월~일)의 날짜 바 (선택은 토, 일, 공휴일만 가능) */}
+          {/* 2행: 주간 7일 날짜 버튼 바 (높이 슬림화) */}
           <div>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '6px',
+              marginBottom: '4px',
               padding: '0 2px'
             }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary, #64748b)' }}>
-                📅 해당 주간 날짜 (토·일·공휴일만 출석 선택 가능)
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary, #64748b)' }}>
+                📅 이번 주 날짜 (토·일·공휴일 출석)
               </span>
 
               {selectedDateStr !== todayStr && (
@@ -448,19 +486,19 @@ export default function QuickCheck({
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px',
+                    gap: '3px',
                     border: 'none',
                     background: 'transparent',
                     color: '#d97706',
-                    fontSize: '0.74rem',
+                    fontSize: '0.72rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    padding: '2px 4px'
+                    padding: '1px 3px'
                   }}
                   title="오늘 날짜로 이동"
                 >
                   <RotateCcw size={11} />
-                  오늘로 복귀
+                  오늘
                 </button>
               )}
             </div>
@@ -469,19 +507,17 @@ export default function QuickCheck({
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: '6px'
+              gap: '4px'
             }}>
               {currentWeekDays.map((item) => {
                 const isSelected = item.isSelected;
-                const isOp = item.isOperating; // 토, 일, 공휴일
+                const isOp = item.isOperating;
                 const holiday = item.holidayName;
 
-                // 요일 텍스트 색상
                 let yoilColor = '#64748b';
                 if (item.isSun || holiday) yoilColor = '#ef4444';
                 else if (item.isSat) yoilColor = '#2563eb';
 
-                // 스타일 분기
                 let bg = '#ffffff';
                 let border = '1px solid rgba(0,0,0,0.08)';
                 let textColor = '#1e293b';
@@ -489,36 +525,34 @@ export default function QuickCheck({
                 let cursor = 'pointer';
 
                 if (!isOp) {
-                  // 평일 미운영일
                   bg = 'rgba(0,0,0,0.02)';
-                  border = '1px solid rgba(0,0,0,0.05)';
+                  border = '1px solid rgba(0,0,0,0.04)';
                   textColor = '#94a3b8';
-                  opacity = isSelected ? 0.9 : 0.45;
+                  opacity = isSelected ? 0.8 : 0.45;
                   cursor = 'not-allowed';
                   if (isSelected) {
                     border = '1.5px solid #cbd5e1';
                     bg = 'rgba(0,0,0,0.04)';
                   }
                 } else {
-                  // 토, 일, 공휴일 (선택 가능)
                   if (isSelected) {
                     if (holiday) {
-                      bg = 'rgba(234,88,12,0.12)';
+                      bg = 'rgba(234,88,12,0.14)';
                       border = '2px solid #ea580c';
                       textColor = '#c2410c';
                     } else if (item.isSat) {
-                      bg = 'rgba(37,99,235,0.12)';
+                      bg = 'rgba(37,99,235,0.14)';
                       border = '2px solid #2563eb';
                       textColor = '#1d4ed8';
                     } else {
-                      bg = 'rgba(239,68,68,0.12)';
+                      bg = 'rgba(239,68,68,0.14)';
                       border = '2px solid #ef4444';
                       textColor = '#dc2626';
                     }
                   } else {
                     if (holiday) {
-                      bg = 'rgba(254,243,199,0.4)';
-                      border = '1px solid rgba(245,158,11,0.4)';
+                      bg = 'rgba(254,243,199,0.5)';
+                      border = '1px solid rgba(245,158,11,0.5)';
                     } else if (item.isSat) {
                       border = '1px solid rgba(37,99,235,0.3)';
                     } else {
@@ -532,71 +566,43 @@ export default function QuickCheck({
                     key={item.dateStr}
                     onClick={() => {
                       if (!isOp) {
-                        setErrorMsg(`${item.month}월 ${item.day}일(${item.dayOfWeek})은 평일(클럽 미운영일)입니다. 토·일·공휴일만 출석 체크가 가능합니다. 🏸`);
+                        setErrorMsg(`${item.month}월 ${item.day}일(${item.dayOfWeek})은 평일(클럽 미운영)입니다. 토·일·공휴일만 출석 체크가 가능합니다. 🏸`);
                         return;
                       }
                       setSelectedDateStr(item.dateStr);
                       setErrorMsg('');
                     }}
                     disabled={!isOp}
-                    title={
-                      !isOp
-                        ? `${item.month}/${item.day}(${item.dayOfWeek}) 평일 - 미운영`
-                        : holiday
-                        ? `${item.month}/${item.day}(${item.dayOfWeek}) ${holiday} (출석 가능)`
-                        : `${item.month}/${item.day}(${item.dayOfWeek}) 주말 운영일 (출석 가능)`
-                    }
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '2px',
-                      padding: '8px 2px',
-                      borderRadius: '12px',
+                      padding: '4px 1px',
+                      borderRadius: '8px',
                       background: bg,
                       border: border,
                       color: textColor,
                       cursor: cursor,
                       opacity: opacity,
-                      transition: 'all 0.15s ease',
-                      boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-                      position: 'relative'
+                      transition: 'all 0.1s ease',
+                      boxShadow: isSelected ? '0 1px 4px rgba(0,0,0,0.08)' : 'none'
                     }}
                   >
-                    {/* 요일 */}
-                    <span style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      color: isOp ? yoilColor : '#94a3b8'
-                    }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: isOp ? yoilColor : '#94a3b8', lineHeight: 1 }}>
                       {item.dayOfWeek}
                     </span>
-
-                    {/* 날짜 숫자 */}
-                    <span style={{
-                      fontSize: '0.92rem',
-                      fontWeight: 800,
-                      lineHeight: 1.1
-                    }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 800, lineHeight: 1.15, marginTop: '1px' }}>
                       {item.day}
                     </span>
-
-                    {/* 상태 라벨 (공휴일명 / 운영 / 미운영) */}
                     <span style={{
-                      fontSize: '0.62rem',
+                      fontSize: '0.58rem',
                       fontWeight: 700,
-                      marginTop: '2px',
+                      marginTop: '1px',
                       whiteSpace: 'nowrap',
-                      color: !isOp
-                        ? '#94a3b8'
-                        : holiday
-                        ? '#ea580c'
-                        : item.isSat
-                        ? '#2563eb'
-                        : '#ef4444'
+                      color: !isOp ? '#94a3b8' : holiday ? '#ea580c' : item.isSat ? '#2563eb' : '#ef4444'
                     }}>
-                      {holiday ? holiday.slice(0, 4) : isOp ? '운영' : '미운영'}
+                      {holiday ? holiday.slice(0, 3) : isOp ? '운영' : '미운영'}
                     </span>
                   </button>
                 );
@@ -605,127 +611,123 @@ export default function QuickCheck({
           </div>
         </div>
 
-        {/* 3행: 운영 여부 상태 안내 및 출석 인원 수 */}
+        {/* 3. 상태 안내 & 출석 완료 수 (1줄 슬림 바) */}
         <div style={{
-          padding: '10px 20px',
+          padding: '6px 12px',
           background: isOperating 
-            ? (holidayName ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.08)')
-            : 'rgba(239,68,68,0.08)',
+            ? (holidayName ? 'rgba(245,158,11,0.09)' : 'rgba(16,185,129,0.07)')
+            : 'rgba(239,68,68,0.07)',
           borderBottom: `1px solid ${
             isOperating 
-              ? (holidayName ? 'rgba(245,158,11,0.25)' : 'rgba(16,185,129,0.2)')
-              : 'rgba(239,68,68,0.2)'
+              ? (holidayName ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.18)')
+              : 'rgba(239,68,68,0.18)'
           }`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '8px'
+          gap: '6px',
+          flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', minWidth: 0, overflow: 'hidden' }}>
             {isOperating ? (
               holidayName ? (
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '5px',
-                  fontSize: '0.8rem',
+                  gap: '4px',
+                  fontSize: '0.74rem',
                   fontWeight: 800,
                   color: '#b45309',
-                  background: 'rgba(245,158,11,0.18)',
-                  padding: '3px 10px',
-                  borderRadius: '12px'
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden'
                 }}>
-                  <Sparkles size={13} style={{ color: '#d97706' }} />
-                  🌕 공휴일 ({holidayName}) · 클럽 운영일 (출석 가능)
+                  <Sparkles size={12} style={{ color: '#d97706', flexShrink: 0 }} />
+                  🌕 {holidayName} · 클럽 운영일 (터치 시 출석)
                 </span>
               ) : (
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '5px',
-                  fontSize: '0.8rem',
+                  gap: '4px',
+                  fontSize: '0.74rem',
                   fontWeight: 700,
                   color: '#059669',
-                  background: 'rgba(16,185,129,0.15)',
-                  padding: '3px 10px',
-                  borderRadius: '12px'
+                  whiteSpace: 'nowrap'
                 }}>
-                  <CheckCircle2 size={13} />
-                  클럽 운영일 (출석 가능)
+                  <CheckCircle2 size={12} style={{ flexShrink: 0 }} />
+                  클럽 운영일 (이름 터치 시 출석 토글)
                 </span>
               )
             ) : (
               <span style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
-                fontSize: '0.8rem',
+                gap: '4px',
+                fontSize: '0.74rem',
                 fontWeight: 700,
                 color: '#dc2626',
-                background: 'rgba(239,68,68,0.15)',
-                padding: '3px 10px',
-                borderRadius: '12px'
+                whiteSpace: 'nowrap'
               }}>
-                <ShieldAlert size={13} />
+                <ShieldAlert size={12} style={{ flexShrink: 0 }} />
                 평일 (클럽 미운영일)
               </span>
             )}
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)' }}>
-              {isOperating ? '회원 이름을 누르면 즉시 출석/취소됩니다.' : '토·일·공휴일만 출석 체크가 가능합니다.'}
-            </span>
           </div>
 
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '4px',
             background: attendedCount > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.04)',
             border: `1px solid ${attendedCount > 0 ? 'rgba(16,185,129,0.3)' : 'rgba(0,0,0,0.08)'}`,
-            borderRadius: '20px',
-            padding: '3px 10px',
-            fontSize: '0.8rem',
+            borderRadius: '12px',
+            padding: '2px 8px',
+            fontSize: '0.74rem',
             color: attendedCount > 0 ? '#059669' : 'var(--text-secondary, #64748b)',
-            fontWeight: 700
+            fontWeight: 800,
+            whiteSpace: 'nowrap',
+            flexShrink: 0
           }}>
-            <Users size={13} />
-            <span>{attendedCount}명 출석 완료</span>
+            <Users size={12} />
+            <span>{attendedCount}명 출석</span>
           </div>
         </div>
 
-        {/* 에러 메시지 (알림) */}
+        {/* 에러 메시지 */}
         {errorMsg && (
           <div style={{
-            padding: '9px 20px',
+            padding: '6px 14px',
             background: 'rgba(239,68,68,0.12)',
             borderBottom: '1px solid rgba(239,68,68,0.25)',
-            fontSize: '0.82rem',
+            fontSize: '0.78rem',
             color: '#b91c1c',
             fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            flexShrink: 0
           }}>
-            <ShieldAlert size={15} style={{ flexShrink: 0 }} />
+            <ShieldAlert size={14} style={{ flexShrink: 0 }} />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* 회원 이름 검색창 */}
-        <div style={{ padding: '12px 20px 6px' }}>
+        {/* 4. 회원 이름 검색창 (슬림 30px 높이) */}
+        <div style={{ padding: '6px 12px 4px', flexShrink: 0 }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             background: 'rgba(0,0,0,0.03)',
             border: '1px solid var(--glass-border, rgba(0,0,0,0.1))',
-            borderRadius: '12px',
-            padding: '8px 12px'
+            borderRadius: '10px',
+            padding: '5px 10px'
           }}>
-            <Search size={15} style={{ color: '#94a3b8' }} />
+            <Search size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
             <input
               type="text"
-              placeholder="회원 이름 검색 (예: 김도현, 강승국...)"
+              placeholder="회원 이름 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -733,7 +735,7 @@ export default function QuickCheck({
                 border: 'none',
                 outline: 'none',
                 width: '100%',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 color: 'var(--text-primary, #1e293b)'
               }}
             />
@@ -742,42 +744,42 @@ export default function QuickCheck({
                 onClick={() => setSearchTerm('')}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}
               >
-                <X size={14} />
+                <X size={13} />
               </button>
             )}
           </div>
         </div>
 
-        {/* 회원 카드 그리드 목록 */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px 20px' }}>
+        {/* 5. 회원 카드 그리드 목록 (화면의 70% 이상을 꽉 채움!) */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '6px 10px 12px' }}>
           {loading ? (
             <div style={{
               textAlign: 'center',
-              padding: '48px 0',
+              padding: '36px 0',
               color: 'var(--text-secondary, #64748b)',
-              fontSize: '0.9rem',
+              fontSize: '0.85rem',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '12px'
+              gap: '8px'
             }}>
-              <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite', color: '#f59e0b' }} />
+              <RefreshCw size={20} style={{ animation: 'spin 1s linear infinite', color: '#f59e0b' }} />
               회원 목록 불러오는 중...
             </div>
           ) : filteredUsers.length === 0 ? (
             <div style={{
               textAlign: 'center',
-              padding: '48px 0',
+              padding: '36px 0',
               color: 'var(--text-secondary, #64748b)',
-              fontSize: '0.9rem'
+              fontSize: '0.85rem'
             }}>
               {searchTerm ? `'${searchTerm}' 검색 결과가 없습니다.` : '등록된 회원이 없습니다.'}
             </div>
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-              gap: '10px'
+              gridTemplateColumns: 'repeat(auto-fill, minmax(95px, 1fr))', // 모바일에서 3열 또는 2열로 정갈하게 배치
+              gap: '6px'
             }}>
               {filteredUsers.map((user) => {
                 const attended = attendedIds.has(user.id);
@@ -788,67 +790,69 @@ export default function QuickCheck({
                     key={user.id}
                     onClick={() => handleToggle(user)}
                     disabled={!!toggling || !isOperating}
-                    title={!isOperating ? '평일은 출석 체크가 제한됩니다' : `${user.name} 출석 토글 (${selectedDateStr})`}
+                    title={!isOperating ? '평일은 출석 체크가 제한됩니다' : `${user.name} 출석 토글`}
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '6px',
-                      padding: '14px 10px',
-                      borderRadius: '16px',
+                      gap: '4px',
+                      padding: '8px 4px',
+                      minHeight: '74px', // 터치하기 가장 좋은 최적 높이
+                      borderRadius: '12px',
                       border: attended
                         ? '2px solid #10b981'
-                        : '1.5px solid var(--glass-border, rgba(0,0,0,0.08))',
+                        : '1px solid var(--glass-border, rgba(0,0,0,0.1))',
                       background: attended
                         ? 'rgba(16,185,129,0.12)'
                         : !isOperating
                         ? 'rgba(0,0,0,0.02)'
                         : 'var(--surface-color, #ffffff)',
                       cursor: !isOperating ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.15s ease',
-                      opacity: isProcessing ? 0.6 : (!isOperating ? 0.6 : 1),
-                      position: 'relative',
+                      transition: 'all 0.1s ease',
+                      opacity: isProcessing ? 0.6 : (!isOperating ? 0.55 : 1),
                       boxShadow: attended 
-                        ? '0 6px 16px rgba(16,185,129,0.18)' 
-                        : '0 2px 6px rgba(0,0,0,0.02)',
-                      transform: attended ? 'translateY(-1px)' : 'none'
+                        ? '0 3px 10px rgba(16,185,129,0.2)' 
+                        : '0 1px 3px rgba(0,0,0,0.03)',
+                      transform: attended ? 'scale(1.01)' : 'none'
                     }}
                   >
                     {/* 상태 아이콘 */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {attended ? (
-                        <CheckCircle2 size={24} style={{ color: '#10b981' }} />
+                        <CheckCircle2 size={20} style={{ color: '#10b981' }} />
                       ) : (
-                        <Circle size={24} style={{ color: 'var(--text-secondary, #cbd5e1)' }} />
+                        <Circle size={20} style={{ color: 'var(--text-secondary, #cbd5e1)' }} />
                       )}
                     </div>
 
-                    {/* 회원 이름 */}
+                    {/* 회원 이름 (가독성 최고로 큼직하고 뚜렷하게) */}
                     <div style={{
-                      fontWeight: 700,
-                      fontSize: '0.95rem',
+                      fontWeight: 800,
+                      fontSize: '0.98rem',
                       color: attended ? '#059669' : 'var(--text-primary, #1e293b)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '3px',
+                      lineHeight: 1.15
                     }}>
                       <span>{user.name}</span>
                       {user.isAdmin && (
-                        <Shield size={12} style={{ color: '#8b5cf6' }} title="관리자" />
+                        <Shield size={11} style={{ color: '#8b5cf6' }} title="관리자" />
                       )}
                     </div>
 
                     {/* 출석 여부 라벨 */}
                     <div style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      color: attended ? '#10b981' : 'var(--text-secondary, #94a3b8)',
-                      background: attended ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.04)',
-                      padding: '2px 8px',
-                      borderRadius: '10px'
+                      fontSize: '0.66rem',
+                      fontWeight: 700,
+                      color: attended ? '#059669' : 'var(--text-secondary, #94a3b8)',
+                      background: attended ? 'rgba(16,185,129,0.18)' : 'rgba(0,0,0,0.04)',
+                      padding: '1px 6px',
+                      borderRadius: '8px',
+                      lineHeight: 1.2
                     }}>
-                      {isProcessing ? '처리 중...' : attended ? '✓ 출석 완료' : '미출석'}
+                      {isProcessing ? '처리 중' : attended ? '✓ 출석 완료' : '미출석'}
                     </div>
                   </button>
                 );
@@ -857,30 +861,35 @@ export default function QuickCheck({
           )}
         </div>
 
-        {/* 모달 푸터 */}
+        {/* 6. 모달 푸터 (컴팩트 1줄, 닫기 버튼 꺾임 방지) */}
         <div style={{
-          padding: '12px 20px',
+          padding: '8px 12px',
           borderTop: '1px solid var(--glass-border, rgba(0,0,0,0.08))',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(0,0,0,0.02)'
+          gap: '8px',
+          background: 'rgba(0,0,0,0.02)',
+          flexShrink: 0
         }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)' }}>
-            총 회원 <strong>{filteredUsers.length}</strong>명 · <strong>{formatKoreanDate(selectedDateStr)}</strong> 기준
+          <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary, #64748b)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            총 <strong>{filteredUsers.length}</strong>명 · <strong>{attendedCount}</strong>명 출석
           </span>
           <button
             onClick={onClose}
             style={{
-              padding: '7px 18px',
-              borderRadius: '10px',
+              padding: '6px 16px',
+              minWidth: '60px',
+              flexShrink: 0,
+              borderRadius: '8px',
               border: '1px solid var(--glass-border, rgba(0,0,0,0.15))',
               background: '#ffffff',
               color: 'var(--text-primary, #334155)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
+              fontSize: '0.82rem',
+              fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+              whiteSpace: 'nowrap',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
             }}
           >
             닫기
