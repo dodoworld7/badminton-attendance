@@ -151,52 +151,63 @@ export default function AdminPanel({
     }
   };
 
-  // 4. 사진 파일 선택 핸들러 (1단계: 사진 입력 및 고효율 압축 미리보기)
+  // 4. 사진 파일 선택 핸들러 (사진 선택 시 즉시 최적화 및 상단 배너/모바일/웹 실시간 클라우드 등록)
   const handlePhotoSelect = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
-    setBannerMsg({ text: '사진을 최적화하여 준비하는 중입니다...', type: 'info' });
+    setBannerSaving(true);
+    setBannerMsg({ text: '⏳ 사진을 최적화하고 클라우드에 실시간 동기화하는 중입니다...', type: 'info' });
 
     try {
-      // 이미지 자동 리사이징 및 압축 (1200px, 용량 150KB 내외로 최적화)
-      const compressedDataUrl = await compressImage(file, 1200, 0.85);
-      setPendingPhoto(compressedDataUrl);
-      setPendingFileName(file.name);
+      // 이미지 자동 리사이징 및 압축 (960px, 모바일 데이터 절약 및 최적화)
+      const compressedDataUrl = await compressImage(file, 960, 0.78);
+      setPendingPhoto(null);
+      setPendingFileName('');
+      setBannerPreview(compressedDataUrl);
+
+      // 1. 상단 기본 페이지 배너(IntroCard) 즉시 변경
+      if (onBannerChange) {
+        onBannerChange(compressedDataUrl);
+      }
+
+      // 2. Firebase Cloud & 로컬스토리지 저장 (모바일-웹 모든 기기 실시간 반영)
+      await dbService.updateClubBanner(compressedDataUrl);
+
       setBannerMsg({ 
-        text: `📷 "${file.name}" 사진이 선택되었습니다. 아래 [등록하기] 버튼을 누르면 상단 배너에 즉시 반영됩니다!`, 
-        type: 'info' 
+        text: `✓ 클럽 대표 사진이 성공적으로 변경되어 상단 배너와 모바일/웹 모든 기기에 실시간 반영되었습니다! 🏸`, 
+        type: 'success' 
       });
+      setTimeout(() => setBannerMsg({ text: '', type: '' }), 6000);
     } catch (err) {
-      console.error('이미지 압축 실패:', err);
-      setBannerMsg({ text: '❌ 사진 파일을 읽는 도중 오류가 발생했습니다.', type: 'error' });
+      console.error('사진 등록 실패:', err);
+      setBannerMsg({ text: '❌ 사진 등록에 실패했습니다: ' + err.message, type: 'error' });
     } finally {
-      // 동일 파일 다시 선택 가능하도록 리셋
+      setBannerSaving(false);
       if (bannerInputRef.current) bannerInputRef.current.value = '';
     }
   };
 
-  // 5. 사진 등록하기 버튼 클릭 핸들러 (2단계: 저장 및 실시간 상단 배너 반영)
+  // 5. 사진 수동 등록하기 버튼 클릭 핸들러 (보조 등록)
   const handleRegisterBanner = async () => {
     if (!pendingPhoto) {
-      setBannerMsg({ text: '⚠️ 먼저 [사진 파일 선택]을 통해 등록할 사진을 선택해 주세요.', type: 'error' });
+      if (bannerInputRef.current) bannerInputRef.current.click();
       return;
     }
 
     setBannerSaving(true);
-    setBannerMsg({ text: '', type: '' });
+    setBannerMsg({ text: '⏳ 사진을 클라우드에 등록 중입니다...', type: 'info' });
 
     try {
-      await dbService.updateClubBanner(pendingPhoto);
-      // 부모 App.jsx에 실시간 변경 알림 (상단 배너 즉시 반영)
       if (onBannerChange) {
         onBannerChange(pendingPhoto);
       }
       setBannerPreview(pendingPhoto);
+      await dbService.updateClubBanner(pendingPhoto);
       setPendingPhoto(null);
       setPendingFileName('');
       setBannerMsg({ text: '✓ 클럽 대표 사진이 성공적으로 등록되어 상단에 즉시 반영되었습니다! 🏸', type: 'success' });
-      setTimeout(() => setBannerMsg({ text: '', type: '' }), 5000);
+      setTimeout(() => setBannerMsg({ text: '', type: '' }), 6000);
     } catch (err) {
       console.error('사진 등록 실패:', err);
       setBannerMsg({ text: '❌ 사진 등록에 실패했습니다: ' + err.message, type: 'error' });
@@ -510,157 +521,97 @@ export default function AdminPanel({
               </span>
             </div>
             <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '10px' }}>
-              사진을 선택한 후 <strong>[등록하기]</strong> 버튼을 누르면 상단 배너에 즉시 적용됩니다.
+              사진을 선택하면 상단 배너와 <strong>모바일/웹 모든 기기에 실시간으로 즉시 적용</strong>됩니다.
             </p>
 
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              {/* 사진 미리보기 (선택된 새 사진이 있으면 새 사진, 없으면 현재 사진) */}
+              {/* 사진 미리보기 */}
               <div style={{
                 width: '84px',
                 height: '58px',
                 borderRadius: '10px',
                 overflow: 'hidden',
-                border: pendingPhoto ? '2px solid #f59e0b' : '1px solid #cbd5e1',
+                border: '1.5px solid #d97706',
                 flexShrink: 0,
                 position: 'relative',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
               }}>
                 <img 
-                  src={pendingPhoto || bannerPreview} 
+                  src={bannerPreview} 
                   alt="배너 미리보기" 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                 />
-                {pendingPhoto && (
-                  <span style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    background: 'rgba(245, 158, 11, 0.9)',
-                    color: '#ffffff',
-                    fontSize: '0.62rem',
-                    fontWeight: 800,
-                    textAlign: 'center',
-                    padding: '1px 0'
-                  }}>
-                    선택됨
-                  </span>
-                )}
               </div>
 
-              {/* 1단계: 사진 파일 선택 & 2단계: 등록하기 버튼 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {/* 사진 파일 선택 버튼 */}
+              {/* 사진 변경 및 복원 버튼 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => bannerInputRef.current && bannerInputRef.current.click()}
+                  disabled={bannerSaving}
+                  style={{
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: bannerSaving ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 8px rgba(245,158,11,0.25)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <Upload size={14} />
+                  <span>{bannerSaving ? '모바일/웹 동기화 중...' : '📷 새 사진 선택 및 즉시 등록'}</span>
+                </button>
+
+                {isCustomBanner && (
                   <button
                     type="button"
-                    onClick={() => bannerInputRef.current && bannerInputRef.current.click()}
+                    onClick={handleResetBanner}
+                    disabled={bannerSaving}
                     style={{
-                      flex: 1,
-                      background: '#f8fafc',
-                      color: '#334155',
+                      alignSelf: 'flex-start',
+                      background: '#f1f5f9',
+                      color: '#475569',
                       border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      padding: '7px 10px',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
-                      whiteSpace: 'nowrap'
+                      gap: '4px'
                     }}
                   >
-                    <Upload size={13} style={{ color: '#64748b' }} />
-                    <span>{pendingPhoto ? '다른 사진 선택' : '사진 파일 선택'}</span>
+                    <RotateCcw size={11} />
+                    <span>기본 사진으로 복원</span>
                   </button>
-
-                  {/* 등록하기 버튼 (새 사진이 선택되었을 때 활성화) */}
-                  <button
-                    type="button"
-                    onClick={handleRegisterBanner}
-                    disabled={!pendingPhoto || bannerSaving}
-                    style={{
-                      background: pendingPhoto 
-                        ? 'linear-gradient(135deg, #f59e0b, #d97706)' 
-                        : '#e2e8f0',
-                      color: pendingPhoto ? '#ffffff' : '#94a3b8',
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '7px 14px',
-                      fontSize: '0.8rem',
-                      fontWeight: 800,
-                      cursor: pendingPhoto ? 'pointer' : 'not-allowed',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px',
-                      boxShadow: pendingPhoto ? '0 2px 8px rgba(245,158,11,0.3)' : 'none',
-                      transition: 'all 0.15s ease',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    <Check size={14} />
-                    <span>{bannerSaving ? '등록 중...' : '등록하기'}</span>
-                  </button>
-                </div>
-
-                {/* 취소 또는 기본값 복원 버튼 */}
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  {pendingPhoto && (
-                    <button
-                      type="button"
-                      onClick={handleCancelPending}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#64748b',
-                        fontSize: '0.72rem',
-                        cursor: 'pointer',
-                        padding: '2px 4px',
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      선택 취소
-                    </button>
-                  )}
-
-                  {isCustomBanner && !pendingPhoto && (
-                    <button
-                      type="button"
-                      onClick={handleResetBanner}
-                      style={{
-                        background: '#f1f5f9',
-                        color: '#475569',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        padding: '3px 8px',
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px'
-                      }}
-                    >
-                      <RotateCcw size={10} />
-                      <span>기본 사진으로 복원</span>
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
-            {/* 숨겨진 파일 선택 인풋 */}
-            <input
-              type="file"
-              ref={bannerInputRef}
-              accept="image/*"
-              onChange={handlePhotoSelect}
-              style={{ display: 'none' }}
-            />
+            {/* 안내 텍스트 */}
+            <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '6px' }}>
+              💡 모바일(스마트폰)이나 PC 어디서 바꾸든 전 회원의 화면에 실시간으로 자동 동기화됩니다.
+            </div>
           </div>
+
+          {/* 숨겨진 파일 선택 인풋 */}
+          <input
+            type="file"
+            ref={bannerInputRef}
+            accept="image/*"
+            onChange={handlePhotoSelect}
+            style={{ display: 'none' }}
+          />
 
           {/* 안내 및 피드백 메시지 */}
           {bannerMsg.text && (

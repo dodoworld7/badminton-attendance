@@ -1,6 +1,6 @@
 // 이미지 압축 및 리사이징 유틸리티
-// 고해상도 모바일/PC 사진(3MB~15MB)을 브라우저 로컬 저장 및 웹 전송에 적합한 크기(150KB 내외)로 리사이징
-export const compressImage = (file, maxWidth = 1200, quality = 0.82) => {
+// 고해상도 모바일/PC 사진(3MB~15MB)을 브라우저 로컬 저장 및 웹/모바일 전송에 최적화(70KB~100KB 내외)로 리사이징
+export const compressImage = (file, maxWidth = 960, quality = 0.78) => {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith('image/')) {
       return reject(new Error('이미지 파일만 등록할 수 있습니다.'));

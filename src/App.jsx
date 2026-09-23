@@ -32,7 +32,7 @@ export default function App() {
     setIsQuickCheckOpen(true);
   };
 
-  // 클럽 대표 배너 사진 초기 로드
+  // 클럽 대표 배너 사진 초기 로드 및 모바일-웹 실시간 동기화 구독
   useEffect(() => {
     const loadBanner = async () => {
       try {
@@ -43,6 +43,15 @@ export default function App() {
       }
     };
     loadBanner();
+
+    // 모바일 ↔ 웹 실시간 사진 변경 동기화 리스너
+    const unsubscribe = dbService.subscribeClubBanner((newBanner) => {
+      setClubBanner(newBanner || null);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
   // 페이지 로드 시 로그인 세션 확인 및 출석 정보 로드

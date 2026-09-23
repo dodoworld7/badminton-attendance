@@ -19,7 +19,8 @@ import {
   where, 
   orderBy,
   writeBatch,
-  updateDoc
+  updateDoc,
+  onSnapshot
 } from 'firebase/firestore';
 
 // 환경 변수에서 Firebase 정보 추출
@@ -643,33 +644,114 @@ export const dbService = {
     }
   },
 
-  // 클럽 대표 배너 사진 조회
+  // 클럽 대표 배너 사진 조회 (Firestore 2중 조회 + LocalStorage 폴백)
   async getClubBanner() {
-    if (isFirebaseConfigured) {
+    if (isFirebaseConfigured && db) {
+      // 1. settings/club 우선 조회
       try {
         const settingsDoc = await getDoc(doc(db, 'settings', 'club'));
         if (settingsDoc.exists() && settingsDoc.data().banner_image) {
-          return settingsDoc.data().banner_image;
+          const banner = settingsDoc.data().banner_image;
+          try { localStorage.setItem('badminton_club_banner', banner); } catch (e) {}
+          return banner;
         }
       } catch (err) {
-        console.warn('Firebase 배너 조회 실패, 로컬 스토리지 확인:', err);
+        console.warn('Firebase settings/club 배너 조회 확인:', err);
+      }
+
+      // 2. attendance/club_banner 보조 조회 (기존 보안 규칙 호환용)
+      try {
+        const fallbackDoc = await getDoc(doc(db, 'attendance', 'club_banner'));
+        if (fallbackDoc.exists() && fallbackDoc.data().banner_image) {
+          const banner = fallbackDoc.data().banner_image;
+          try { localStorage.setItem('badminton_club_banner', banner); } catch (e) {}
+          return banner;
+        }
+      } catch (err) {
+        console.warn('Firebase attendance/club_banner 배너 조회 확인:', err);
       }
     }
     return localStorage.getItem('badminton_club_banner') || null;
   },
 
-  // 관리자 전용: 클럽 대표 배너 사진 저장 (Base64 이미지)
+  // 클럽 대표 배너 사진 실시간 구독 (모바일 ↔ 웹 간 실시간 자동 반영)
+  subscribeClubBanner(callback) {
+    if (!isFirebaseConfigured || !db) return () => {};
+
+    let unsub1 = () => {};
+    let unsub2 = () => {};
+
+    try {
+      unsub1 = onSnapshot(doc(db, 'settings', 'club'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && 'banner_image' in data) {
+            callback(data.banner_image || null);
+          }
+        }
+      }, (err) => {
+        console.warn('settings/club 실시간 수신 대기:', err);
+      });
+    } catch (e) {
+      console.warn('unsub1 설정 실패:', e);
+    }
+
+    try {
+      unsub2 = onSnapshot(doc(db, 'attendance', 'club_banner'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && 'banner_image' in data) {
+            callback(data.banner_image || null);
+          }
+        }
+      }, (err) => {
+        console.warn('attendance/club_banner 실시간 수신 대기:', err);
+      });
+    } catch (e) {
+      console.warn('unsub2 설정 실패:', e);
+    }
+
+    return () => {
+      try { if (typeof unsub1 === 'function') unsub1(); } catch (e) {}
+      try { if (typeof unsub2 === 'function') unsub2(); } catch (e) {}
+    };
+  },
+
+  // 관리자 전용: 클럽 대표 배너 사진 저장 (Firestore 및 LocalStorage 동기화)
   async updateClubBanner(imageDataUrl) {
     if (!imageDataUrl) return;
-    localStorage.setItem('badminton_club_banner', imageDataUrl);
-    if (isFirebaseConfigured) {
+
+    // 1. 브라우저 로컬 스토리지에 안전하게 보관 (용량 초과 시 예외 무시)
+    try {
+      localStorage.setItem('badminton_club_banner', imageDataUrl);
+    } catch (e) {
+      console.warn('로컬 스토리지 한도 초과 (클라우드 저장 계속 진행):', e);
+    }
+
+    // 2. Firebase Cloud Firestore 실시간 저장 (모바일-웹 모든 기기 공유)
+    if (isFirebaseConfigured && db) {
+      const payload = {
+        banner_image: imageDataUrl,
+        user_id: auth?.currentUser?.uid || 'admin',
+        attendance_date: 'setting',
+        updated_at: new Date().toISOString()
+      };
+
+      // settings/club 저장 시도
       try {
         await setDoc(doc(db, 'settings', 'club'), {
           banner_image: imageDataUrl,
           updated_at: new Date().toISOString()
         }, { merge: true });
       } catch (err) {
-        console.error('Firebase 배너 저장 실패:', err);
+        console.warn('Firebase settings/club 배너 저장 주의:', err);
+      }
+
+      // attendance/club_banner 저장 시도 (보안 규칙 호환 보장)
+      try {
+        await setDoc(doc(db, 'attendance', 'club_banner'), payload, { merge: true });
+      } catch (err) {
+        console.warn('Firebase attendance/club_banner 배너 저장 주의:', err);
       }
     }
     return imageDataUrl;
@@ -677,15 +759,29 @@ export const dbService = {
 
   // 관리자 전용: 클럽 대표 배너 사진 초기화 (기본 사진으로 복원)
   async resetClubBanner() {
-    localStorage.removeItem('badminton_club_banner');
-    if (isFirebaseConfigured) {
+    try {
+      localStorage.removeItem('badminton_club_banner');
+    } catch (e) {}
+
+    if (isFirebaseConfigured && db) {
       try {
         await setDoc(doc(db, 'settings', 'club'), {
           banner_image: null,
           updated_at: new Date().toISOString()
         }, { merge: true });
       } catch (err) {
-        console.error('Firebase 배너 초기화 실패:', err);
+        console.warn('Firebase settings 배너 초기화:', err);
+      }
+
+      try {
+        await setDoc(doc(db, 'attendance', 'club_banner'), {
+          banner_image: null,
+          user_id: auth?.currentUser?.uid || 'admin',
+          attendance_date: 'setting',
+          updated_at: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firebase attendance 배너 초기화:', err);
       }
     }
   }

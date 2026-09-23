@@ -30,5 +30,12 @@ service cloud.firestore {
       allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'admin@admin.com');
       allow write: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'admin@admin.com');
     }
+
+    // 4. 클럽 전역 설정 (대표 사진 등) 규칙 - 모바일/웹 모든 기기 실시간 동기화 지원
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
+
