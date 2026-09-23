@@ -311,7 +311,7 @@ export const dbService = {
   },
 
   async toggleAttendance(dateString, isAttending, user) {
-    if (!user) throw new Error('로그인이 필요합니다.');
+    if (!user) throw new Error('회원 정보를 찾을 수 없습니다.');
 
     if (isFirebaseConfigured) {
       // 중복 체크 방지 및 심플한 삭제를 위해 문서 ID 형식을 '유저ID_날짜'로 고정
@@ -435,54 +435,77 @@ export const dbService = {
   },
 
   async getAllUsers() {
-    if (isFirebaseConfigured) {
+    const userMap = {};
+
+    // 1. 기본 공식 26명 명단 기본 적재 (로그인하지 않아도 빠른 출석체크 카드가 즉시 나타남)
+    OFFICIAL_MEMBERS.forEach((name, idx) => {
+      userMap[name] = {
+        id: `user-member-${idx + 1}`,
+        name: name,
+        email: '',
+        isAdmin: false
+      };
+    });
+
+    // 2. 로컬스토리지에 저장된 추가 회원 및 수정된 정보 병합
+    try {
+      const localUsers = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
+      localUsers.forEach(u => {
+        if (u.name) {
+          userMap[u.name] = {
+            id: u.id || `user-${u.name}`,
+            name: u.name.trim(),
+            email: u.email || '',
+            isAdmin: Boolean(u.isAdmin)
+          };
+        }
+      });
+    } catch (e) {}
+
+    // 3. Firebase 설정 시 Firestore 데이터 병합
+    if (isFirebaseConfigured && db) {
+      // A. users 컬렉션 조회
       try {
-        // 1. Firestore users 컬렉션에서 가입한 회원 목록 조회
         const usersSnapshot = await getDocs(collection(db, 'users'));
-        const userMap = {};
         usersSnapshot.forEach((docSnap) => {
           const data = docSnap.data();
           const uid = data.id || docSnap.id;
-          const userName = data.name || data.displayName || data.userName || (data.email ? data.email.split('@')[0] : '');
-          if (uid && userName) {
-            userMap[uid] = {
+          const userName = data.name || data.displayName || data.userName;
+          if (userName) {
+            userMap[userName.trim()] = {
               id: uid,
-              email: data.email || '',
               name: userName.trim(),
-              isAdmin: Boolean(data.isAdmin || (data.email && data.email.toLowerCase() === 'admin@admin.com')),
+              email: data.email || '',
+              isAdmin: Boolean(data.isAdmin || (data.email && data.email.toLowerCase() === 'admin@admin.com'))
             };
           }
         });
-
-        // 2. 출석 기록(attendance)에서도 보완 — users 컬렉션에 누락된 회원 포함
-        try {
-          const attSnapshot = await getDocs(collection(db, 'attendance'));
-          attSnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const uid = data.user_id;
-            const userName = data.user_name;
-            if (uid && userName && !userMap[uid]) {
-              userMap[uid] = {
-                id: uid,
-                name: userName.trim(),
-                email: data.user_email || '',
-                isAdmin: false,
-              };
-            }
-          });
-        } catch (attErr) {
-          console.warn('출석 기록에서 회원 보완 중 알림:', attErr);
-        }
-
-        return Object.values(userMap);
       } catch (err) {
-        console.error('회원 목록 조회 실패:', err);
-        return [];
+        console.warn('Firestore users 컬렉션 조회 (기본 공식 명단 활용):', err);
       }
-    } else {
-      const mockUsers = JSON.parse(localStorage.getItem(MOCK_USERS_KEY) || '[]');
-      return mockUsers.map(({ id, email, name, isAdmin }) => ({ id, email, name, isAdmin }));
+
+      // B. 출석 기록(attendance)에 존재하는 회원 보완
+      try {
+        const attSnapshot = await getDocs(collection(db, 'attendance'));
+        attSnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const uid = data.user_id;
+          const userName = data.user_name;
+          if (uid && userName && userName !== '관리자' && !userMap[userName.trim()]) {
+            userMap[userName.trim()] = {
+              id: uid,
+              name: userName.trim(),
+              email: '',
+              isAdmin: false
+            };
+          }
+        });
+      } catch (attErr) {
+        console.warn('출석 기록에서 회원 목록 보완 중 알림:', attErr);
+      }
     }
+
+    return Object.values(userMap);
   },
 
   async changeAttendanceDate(attendanceId, newDateString) {
