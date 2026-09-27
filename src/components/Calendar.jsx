@@ -109,9 +109,12 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
       return;
     }
 
-    // 현재 유저의 해당 날짜 출석 여부 확인
+    // 현재 유저의 해당 날짜 출석 여부 확인 (ID 또는 이름 일치)
     const isAlreadyAttending = attendanceList.some(
-      (a) => a.attendance_date === dateStr && a.user_id === currentUser.id
+      (a) => a.attendance_date === dateStr && (
+        a.user_id === currentUser.id ||
+        (currentUser.name && (a.user_name || '').trim() === currentUser.name.trim())
+      )
     );
 
     try {
@@ -164,7 +167,7 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
 
 
 
-  // 선택된 날짜의 참석자 리스트 필터링 (등록 시간 오름차순 정렬)
+  // 선택된 날짜의 참석자 리스트 필터링 (등록 시간 오름차순 정렬 & 중복 회원 제거)
   useEffect(() => {
     if (selectedDateStr) {
       const attendees = attendanceList.filter((a) => a.attendance_date === selectedDateStr);
@@ -173,16 +176,38 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
         const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
         return timeA - timeB;
       });
-      setDayAttendees(attendees);
+
+      // 동일 회원 중복 방지 (이름 또는 user_id 기준)
+      const uniqueAttendees = [];
+      const seen = new Set();
+      attendees.forEach((att) => {
+        const key = (att.user_name || '').trim() || att.user_id;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueAttendees.push(att);
+        }
+      });
+
+      setDayAttendees(uniqueAttendees);
     } else {
       setSelectedDateStr(todayStr);
     }
   }, [selectedDateStr, attendanceList, todayStr]);
 
-  // 해당 날짜에 출석 체크한 사람들 목록 구하기 (달력 셀 렌더링용)
+  // 해당 날짜에 출석 체크한 사람들 목록 구하기 (달력 셀 렌더링용, 중복 제거)
   const getAttendeesForDay = (day) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return attendanceList.filter((a) => a.attendance_date === dateStr);
+    const list = attendanceList.filter((a) => a.attendance_date === dateStr);
+    const unique = [];
+    const seen = new Set();
+    list.forEach((a) => {
+      const key = (a.user_name || '').trim() || a.user_id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(a);
+      }
+    });
+    return unique;
   };
 
   // 날짜 정보 헬퍼 (클래스네임 바인딩)
@@ -264,7 +289,10 @@ export default function Calendar({ currentUser, attendanceList, onRefreshAttenda
           {/* 이번 달 날짜 */}
           {daysInMonth.map((day) => {
             const dayAttendeesList = getAttendeesForDay(day);
-            const userIsAttending = currentUser && dayAttendeesList.some((a) => a.user_id === currentUser.id);
+            const userIsAttending = currentUser && dayAttendeesList.some((a) => 
+              a.user_id === currentUser.id ||
+              (currentUser.name && (a.user_name || '').trim() === currentUser.name.trim())
+            );
             const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const isOperating = isClubOperatingDay(dateStr);
 

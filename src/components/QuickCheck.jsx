@@ -153,6 +153,23 @@ export default function QuickCheck({
     );
   }, [attendanceList, selectedDateStr]);
 
+  // 선택된 날짜에 출석한 이름 목록 (로그인 출석과 빠른 출석체크 연동)
+  const attendedNames = useMemo(() => {
+    return new Set(
+      attendanceList
+        .filter((a) => a.attendance_date === selectedDateStr && a.user_name)
+        .map((a) => (a.user_name || '').trim())
+    );
+  }, [attendanceList, selectedDateStr]);
+
+  // 특정 회원의 출석 여부 판별 (ID 또는 이름 일치)
+  const isUserAttended = useCallback((user) => {
+    if (!user) return false;
+    if (user.id && attendedIds.has(user.id)) return true;
+    if (user.name && attendedNames.has(user.name.trim())) return true;
+    return false;
+  }, [attendedIds, attendedNames]);
+
   // 전체 회원 목록 불러오기
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -211,7 +228,7 @@ export default function QuickCheck({
     setToggling(user.id);
     setErrorMsg('');
     try {
-      const isAttending = attendedIds.has(user.id);
+      const isAttending = isUserAttended(user);
       await dbService.toggleAttendance(selectedDateStr, !isAttending, user);
       await onRefreshAttendance();
     } catch (err) {
@@ -229,7 +246,16 @@ export default function QuickCheck({
 
   if (!isOpen) return null;
 
-  const attendedCount = attendedIds.size;
+  // 선택된 날짜의 실제 고유 출석 인원 수 (이름 기준 중복 제거)
+  const attendedCount = useMemo(() => {
+    const dayRecords = attendanceList.filter((a) => a.attendance_date === selectedDateStr);
+    const uniquePersons = new Set();
+    dayRecords.forEach(a => {
+      const key = (a.user_name || '').trim() || a.user_id;
+      if (key) uniquePersons.add(key);
+    });
+    return uniquePersons.size;
+  }, [attendanceList, selectedDateStr]);
 
   // 검색어 필터링 ('관리자'는 무조건 삭제/제외)
   const filteredUsers = users
@@ -799,7 +825,7 @@ export default function QuickCheck({
               gap: '6px'
             }}>
               {filteredUsers.map((user) => {
-                const attended = attendedIds.has(user.id);
+                const attended = isUserAttended(user);
                 const isProcessing = toggling === user.id;
                 const isSuperAdminCard = user.name === '최고 관리자' || user.name === '최고관리자' || (user.email && user.email.toLowerCase() === 'admin@admin.com');
                 const isLocked = isSuperAdminCard && !isAdmin;

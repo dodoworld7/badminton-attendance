@@ -328,6 +328,29 @@ export const dbService = {
       const docRef = doc(db, 'attendance', docId);
 
       if (isAttending) {
+        // 중복 등록 방지: 혹시 동일한 날짜에 동일한 이름으로 등록된 다른 ID의 문서가 이미 있다면 정리
+        try {
+          const q = query(
+            collection(db, 'attendance'),
+            where('attendance_date', '==', dateString)
+          );
+          const snaps = await getDocs(q);
+          const deletePromises = [];
+          snaps.forEach((docSnap) => {
+            const data = docSnap.data();
+            const isMatchName = user.name && data.user_name && data.user_name.trim() === user.name.trim();
+            // 기존 문서의 ID가 현재 등록할 docId와 다르면 삭제(중복 방지)
+            if (isMatchName && docSnap.id !== docId) {
+              deletePromises.push(deleteDoc(doc(db, 'attendance', docSnap.id)));
+            }
+          });
+          if (deletePromises.length > 0) {
+            await Promise.all(deletePromises);
+          }
+        } catch (checkErr) {
+          console.warn('중복 출석 사전 확인 알림:', checkErr);
+        }
+
         // 출석 등록: 지정된 docId로 저장
         await setDoc(docRef, {
           user_id: user.id,
@@ -354,7 +377,7 @@ export const dbService = {
           snaps.forEach((docSnap) => {
             const data = docSnap.data();
             const isMatchUser = (data.user_id && data.user_id === user.id) ||
-                                (data.user_name && data.user_name.trim() === user.name.trim());
+                                (user.name && data.user_name && data.user_name.trim() === user.name.trim());
             if (isMatchUser) {
               deletePromises.push(deleteDoc(doc(db, 'attendance', docSnap.id)));
             }
@@ -371,18 +394,23 @@ export const dbService = {
       const allAttendance = JSON.parse(localStorage.getItem(MOCK_ATTENDANCE_KEY) || '[]');
       
       if (isAttending) {
-        if (!allAttendance.some(a => (a.user_id === user.id || a.user_name === user.name) && a.attendance_date === dateString)) {
+        const isAlready = allAttendance.some(a => 
+          ((a.user_id === user.id) || (user.name && a.user_name && a.user_name.trim() === user.name.trim())) && 
+          a.attendance_date === dateString
+        );
+        if (!isAlready) {
           allAttendance.push({
             id: `att-${Date.now()}`,
             user_id: user.id,
             user_name: user.name,
-            attendance_date: dateString
+            attendance_date: dateString,
+            created_at: new Date().toISOString()
           });
         }
       } else {
         // 출석 취소: user_id 또는 user_name이 일치하는 항목 삭제
         const filtered = allAttendance.filter(a => 
-          !( (a.user_id === user.id || a.user_name === user.name) && a.attendance_date === dateString )
+          !( ((a.user_id === user.id) || (user.name && a.user_name && a.user_name.trim() === user.name.trim())) && a.attendance_date === dateString )
         );
         localStorage.setItem(MOCK_ATTENDANCE_KEY, JSON.stringify(filtered));
         return;
