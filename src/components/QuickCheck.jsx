@@ -244,9 +244,7 @@ export default function QuickCheck({
     }
   };
 
-  if (!isOpen) return null;
-
-  // 선택된 날짜의 실제 고유 출석 인원 수 (이름 기준 중복 제거)
+  // 선택된 날짜의 실제 고유 출석 인원 수 (이름 기준 중복 제거) - Hook 순서 유지를 위해 조건문 위에 선언
   const attendedCount = useMemo(() => {
     const dayRecords = attendanceList.filter((a) => a.attendance_date === selectedDateStr);
     const uniquePersons = new Set();
@@ -256,6 +254,8 @@ export default function QuickCheck({
     });
     return uniquePersons.size;
   }, [attendanceList, selectedDateStr]);
+
+  if (!isOpen) return null;
 
   // 검색어 필터링 ('관리자'는 무조건 삭제/제외)
   const filteredUsers = users
